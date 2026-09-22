@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; manifest-src 'self'">
 <title>野球スコアブック（早稲田式）</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#2f7d4f">
@@ -1069,7 +1070,7 @@ function openPitchers(k){
 /* ---------------- players editor ---------------- */
 function openPlayers(o){
   const t=team();
-  let h=`<h2>${t.name}　打順の編集</h2><div class="sub">先発の入力と、控え選手との交代ができます。</div>`;
+  let h=`<h2>${esc(t.name)}　打順の編集</h2><div class="sub">先発の入力と、控え選手との交代ができます。</div>`;
   h+=`<div class="plist">`;
   const p=t.players[o-1];
   h+=playerRow(o,p,false,0);
