@@ -255,6 +255,11 @@
     .print-title{display:block!important;}
   }
   .print-title{display:none;padding:.4rem .75rem;font-weight:700;}
+  #printExport{display:none;}
+  @media print{
+    body.printing-export > *:not(#printExport){display:none!important;}
+    body.printing-export #printExport{display:block!important;}
+  }
 </style>
 </head>
 <body>
@@ -270,6 +275,7 @@
 </header>
 
 <div class="print-title" id="printTitle"></div>
+<div id="printExport"></div>
 
 <div id="liveView"></div>
 <div id="gridView" style="display:none">
@@ -1499,7 +1505,7 @@ function pdfFileBase(){
   const away=m.away||"ビジター", home=m.home||"ホーム";
   return `${ymd}_${away}[${totalRuns("away")}]vs[${totalRuns("home")}]${home}`;
 }
-function buildPrintHTML(){
+function buildPrintContent(){
   const prev=S.active;
   const m=S.meta; const title=[m.date,m.tourney,(m.away+" vs "+m.home),m.ground].filter(Boolean).join("　");
   const header=`<h2>スコアブック</h2><div style="color:#666;font-size:13px;margin-bottom:8px">${esc(title)}</div>`;
@@ -1512,9 +1518,12 @@ function buildPrintHTML(){
     pages+=`<div class="team-page">${isFirst?header+board:""}${teamBlock}${isLast?legendHTML():""}</div>`;
   });
   S.active=prev;
+  return pages;
+}
+function buildPrintHTML(){
   return `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(pdfFileBase())}</title><style>${PRINT_CSS}</style></head><body>`+
     `<div class="printbar"><button onclick="window.print()">印刷 / PDFで保存</button></div>`+
-    pages+`</body></html>`;
+    buildPrintContent()+`</body></html>`;
 }
 function legendHTML(){
   return `<div class="legend"><b>凡例</b>　守備位置：投1 捕2 一3 二4 三5 遊6 左7 中8 右9 ／ DH=D。安打=赤線・得点=ダイヤ塗り。K=三振、B=四球、HP=死球、IB=故意四球、E=失策、DP=併殺、×=走者アウト、犠打=□囲み・犠飛=△囲み。S=盗塁、W=暴投、P=捕逸、BK=ボーク。アウトは野手を連携順に（例 6-3）、自分で塁を踏めば番号+塁記号（A一・B二・C三・D本、例 3A/6B）。ボールカウント：●ボール／×見逃し／⊗空振り／△ファウル、✓＝その投球時に走者が動いた。色：赤＝安打・得点、青＝四死球・犠打犠飛。</div>`;
@@ -1529,9 +1538,9 @@ function pitchersLine(tm,k){
   }).join("、 ")}</div>`;
 }
 async function exportSheet(){
-  const html=buildPrintHTML();
   try{
     if(window.claude && window.claude.use){
+      const html=buildPrintHTML();
       const d=await window.claude.use("downloads");
       if(d){
         const fn=pdfFileBase().replace(/\s+/g,"")+".html";
@@ -1542,26 +1551,28 @@ async function exportSheet(){
       }
     }
   }catch(e){ if(e&&e.code==="declined") return; }
-  printHTML(html);
+  printInPage();
 }
-function printHTML(html){
-  // スマホのブラウザは、スクリプトからの自動印刷（隠しiframeでのprint()や、
-  // window.open()の連続呼び出し）を「自動的な動作」としてブロックすることがあるため、
-  // Blob URLへの通常のリンククリックとしてスコアシートを新しいタブで開き、
-  // ページ上の「印刷 / PDFで保存」ボタンをユーザー自身に押してもらう方式にする。
-  try{
-    const blob=new Blob([html], {type:"text/html"});
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement("a");
-    a.href=url; a.target="_blank"; a.rel="noopener";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(()=>URL.revokeObjectURL(url), 60000);
-  }catch(e){
-    showModal(`<h2>新しいタブを開けませんでした</h2><div class="sub">ポップアップがブロックされた可能性があります。ブラウザの設定でこのサイトのポップアップを許可してから、もう一度お試しください。</div><div class="modal-actions"><span class="spacer"></span><button class="btn primary" id="exOk2">OK</button></div>`);
-    const ok=document.getElementById("exOk2"); if(ok) ok.onclick=closeModal;
-  }
+function printInPage(){
+  // 新しいタブや別ウィンドウを開く方式は、スマホのブラウザで「自動的な動作」として
+  // ブロックされることがあるため、今表示中のページ自体にスコアブック全体を差し込み、
+  // ユーザー操作から直接window.print()を呼ぶ（＝ブラウザの通常の印刷）方式にする。
+  const el=document.getElementById("printExport");
+  el.innerHTML=`<style>@media print{${PRINT_CSS}}</style>`+buildPrintContent();
+  const prevTitle=document.title;
+  document.title=pdfFileBase();
+  document.body.classList.add("printing-export");
+  let done=false;
+  const cleanup=()=>{
+    if(done) return; done=true;
+    document.body.classList.remove("printing-export");
+    el.innerHTML="";
+    document.title=prevTitle;
+    window.removeEventListener("afterprint",cleanup);
+  };
+  window.addEventListener("afterprint",cleanup);
+  setTimeout(cleanup,20000);
+  window.print();
 }
 
 /* ---------------- backup (export / import all data) ---------------- */
