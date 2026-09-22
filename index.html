@@ -559,7 +559,12 @@ function lineupCellHTML(t,o){
     const posLabel=starter.pos?`${starter.pos}（${POS_NUM[starter.pos]}）`:"";
     who=`<div class="nm">${esc(starter.name)}<span style="color:var(--muted);font-weight:400;font-size:.7rem"> ${starter.num?("#"+esc(starter.num)):""}</span></div>
          <div class="pos">${posLabel}${starter.bats?(" ・"+starter.bats+"打"):""}</div>`;
-    subs.forEach(sp=>{ const tag=sp.pr?`（代走${sp.atInning?"・"+sp.atInning+"回〜":""}）`:(sp.pos?"（"+sp.pos+"）":""); who+=`<div class="nm sub">→ ${esc(sp.name)}${tag}</div>`; });
+    subs.forEach(sp=>{
+      const innTxt=sp.atInning?`${sp.atInning}回〜`:"";
+      const label=sp.pr?"代走":(sp.pos||"");
+      const tag=(label||innTxt)?`（${[label,innTxt].filter(Boolean).join("・")}）`:"";
+      who+=`<div class="nm sub">→ ${esc(sp.name)}${tag}</div>`;
+    });
   }
   return `<button class="lineup-cell" data-o="${o}"><span class="ord">${o}</span><span class="who">${who}</span></button>`;
 }
@@ -1049,7 +1054,7 @@ function openPlayers(o){
   subs.forEach((sp,idx)=>bindPlayerRow(o,sp,true,idx,refresh));
   document.getElementById("pAddSub").onclick=()=>{
     if(!S.teams[S.active].subs) S.teams[S.active].subs=[];
-    S.teams[S.active].subs.push({order:o,pos:"",name:"",num:"",bats:"右",sub:true});
+    S.teams[S.active].subs.push({order:o,pos:"",name:"",num:"",bats:"右",sub:true,atInning:(S.live?S.live.inning:1)});
     scheduleSave(); openPlayers(o);
   };
   document.getElementById("pRosterFill").onclick=()=>{ rosterFill(t); scheduleSave(); renderBoard(); openPlayers(o); };
@@ -1061,7 +1066,10 @@ function playerRow(o,p,isSub,idx){
   const batOpts=BATS.map(x=>`<option ${p.bats===x?"selected":""}>${x}</option>`).join("");
   const hasR=ROSTER.length>0;
   const rSel=hasR?`<select class="pRoster"><option value="">名簿</option>${ROSTER.map((r,ri)=>`<option value="${ri}">${esc(r.name)||"(無名)"}${r.num?(" #"+esc(r.num)):""}</option>`).join("")}</select>`:"";
-  const cols=hasR?"1.4rem 4.2rem 3rem 1fr 2.4rem 2.2rem":"1.4rem 3.2rem 1fr 2.6rem 2.4rem";
+  const innField=isSub?`<input class="pInn" placeholder="回" inputmode="numeric" value="${p.atInning||''}">`:"";
+  const cols=hasR
+    ? (isSub?"1.4rem 4.2rem 3rem 1fr 2.4rem 2.2rem 2.6rem":"1.4rem 4.2rem 3rem 1fr 2.4rem 2.2rem")
+    : (isSub?"1.4rem 3.2rem 1fr 2.6rem 2.4rem 2.6rem":"1.4rem 3.2rem 1fr 2.6rem 2.4rem");
   return `<div class="prow" data-sub="${isSub?1:0}" data-idx="${idx}" style="grid-template-columns:${cols}">
     <span class="o">${isSub?"→":o}</span>
     ${rSel}
@@ -1069,6 +1077,7 @@ function playerRow(o,p,isSub,idx){
     <input class="pName" placeholder="${isSub?"控え選手名":"選手名"}" value="${esc(p.name)}">
     <input class="pNum" placeholder="背番" value="${esc(p.num)}">
     <select class="pBat">${batOpts}</select>
+    ${innField}
   </div>`;
 }
 function bindPlayerRow(o,p,isSub,idx,cb){
@@ -1077,6 +1086,7 @@ function bindPlayerRow(o,p,isSub,idx,cb){
   if(!row) return;
   const rs=row.querySelector(".pRoster");
   if(rs) rs.onchange=e=>{ const ri=e.target.value; if(ri!==""){ const r=ROSTER[+ri]; p.name=r.name; p.num=r.num; row.querySelector(".pName").value=r.name; row.querySelector(".pNum").value=r.num; cb(); } };
+  const pi=row.querySelector(".pInn"); if(pi) pi.oninput=e=>{ p.atInning=parseInt(e.target.value)||""; cb(); renderBoard(); };
   row.querySelector(".pPos").onchange=e=>{ p.pos=e.target.value; cb(); renderBoard(); };
   row.querySelector(".pName").oninput=e=>{ p.name=e.target.value; cb(); };
   row.querySelector(".pNum").oninput=e=>{ p.num=e.target.value; cb(); };
