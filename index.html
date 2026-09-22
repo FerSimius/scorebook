@@ -1545,17 +1545,16 @@ async function exportSheet(){
   printHTML(html);
 }
 function printHTML(html){
-  const ifr=document.createElement("iframe");
-  ifr.style.position="fixed"; ifr.style.right="0"; ifr.style.bottom="0";
-  ifr.style.width="0"; ifr.style.height="0"; ifr.style.border="0";
-  document.body.appendChild(ifr);
-  const cleanup=()=>{ if(ifr.parentNode) ifr.parentNode.removeChild(ifr); };
-  ifr.onload=()=>{
-    try{ ifr.contentWindow.focus(); ifr.contentWindow.print(); }catch(e){}
-    setTimeout(cleanup, 1000);
-  };
-  const doc=ifr.contentWindow.document;
-  doc.open(); doc.write(html); doc.close();
+  // スマホのブラウザは、スクリプトからの自動印刷（隠しiframeでの print()）を
+  // 「自動的な印刷」としてブロックすることがあるため、新しいタブでスコアシートを開き、
+  // ページ上の「印刷 / PDFで保存」ボタンをユーザー自身に押してもらう方式にする。
+  const win=window.open("", "_blank");
+  if(!win){
+    showModal(`<h2>新しいタブを開けませんでした</h2><div class="sub">ポップアップがブロックされた可能性があります。ブラウザの設定でこのサイトのポップアップを許可してから、もう一度お試しください。</div><div class="modal-actions"><span class="spacer"></span><button class="btn primary" id="exOk2">OK</button></div>`);
+    const ok=document.getElementById("exOk2"); if(ok) ok.onclick=closeModal;
+    return;
+  }
+  win.document.open(); win.document.write(html); win.document.close();
 }
 
 /* ---------------- backup (export / import all data) ---------------- */
