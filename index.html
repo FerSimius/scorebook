@@ -1393,8 +1393,20 @@ async function exportSheet(){
       }
     }
   }catch(e){ if(e&&e.code==="declined") return; }
-  if(S.view==="live"){ S.view="grid"; renderAll(); }
-  try{ window.print(); }catch(e){}
+  printHTML(html);
+}
+function printHTML(html){
+  const ifr=document.createElement("iframe");
+  ifr.style.position="fixed"; ifr.style.right="0"; ifr.style.bottom="0";
+  ifr.style.width="0"; ifr.style.height="0"; ifr.style.border="0";
+  document.body.appendChild(ifr);
+  const cleanup=()=>{ if(ifr.parentNode) ifr.parentNode.removeChild(ifr); };
+  ifr.onload=()=>{
+    try{ ifr.contentWindow.focus(); ifr.contentWindow.print(); }catch(e){}
+    setTimeout(cleanup, 1000);
+  };
+  const doc=ifr.contentWindow.document;
+  doc.open(); doc.write(html); doc.close();
 }
 
 /* ---------------- boot ---------------- */
