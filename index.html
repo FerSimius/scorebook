@@ -1347,6 +1347,7 @@ function renderLive(){
       </div>
       <div class="atbat">
         <div class="ctrl-title">投球（カウント）</div>
+        <div class="pitch-bar"><span class="seq">${S.live.pitches.map(x=>PITCH[x].g).join(" ")||"&nbsp;"}</span></div>
         <div class="pitchrow">
           <button data-lp="ball">ボール</button>
           <button data-lp="called">見逃し</button>
