@@ -715,7 +715,7 @@ function renderWizard(){
   // runner movement: in LIVE mode this is done on the diamond (each base shows "◯番 名前"),
   // so the confusing in-wizard controls are shown only in the grid view.
   if(S.view==="live"){
-    h+=`<div class="hint" style="padding:.3rem 0">走者を動かすときは、確定して画面に戻ってから、ダイヤモンドの色付きの塁をタップしてください（「◯番 名前」で誰の走者か表示されます）。</div>`;
+    h+=`<div class="hint" style="padding:.3rem 0">走者を動かすときは、確定して画面に戻ってから、ダイヤモンドの色付きの塁をタップしてください。タップすると「◯番 選手名」のポップアップが開き、走者を確認しながら操作できます。</div>`;
   } else {
     const bp=team().players[W.o-1]; const batName=(bp&&bp.name)?(" "+esc(bp.name)):"";
     const onBase = (W.reachedBase>=1 && (W.category==="hit"||W.category==="walk"||W.category==="err"));
