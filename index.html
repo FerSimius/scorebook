@@ -62,7 +62,10 @@
   }
   header.bar .title{font-weight:700;font-size:1rem;letter-spacing:.02em;}
   header.bar .meta{font-size:.78rem;opacity:.92;}
-  header.bar .spacer{flex:1;}
+  header.bar .hdr-actions{
+    display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;justify-content:flex-end;
+    margin-left:auto;
+  }
   header.bar button{
     background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.35);
     color:#fff;border-radius:8px;padding:.35rem .6rem;font-size:.8rem;
@@ -134,10 +137,10 @@
   @media(min-width:600px){.modal{border-radius:16px;}}
   .modal h2{margin:.1rem 0 .2rem;font-size:1.05rem;}
   .modal .sub{color:var(--muted);font-size:.8rem;margin-bottom:.7rem;}
-  .field{margin-bottom:.6rem;}
+  .field{margin-bottom:.6rem;min-width:0;}
   .field label{display:block;font-size:.78rem;color:var(--muted);margin-bottom:.2rem;}
   .field input,.field select{
-    width:100%;padding:.5rem;border:1px solid var(--line-strong);border-radius:8px;
+    width:100%;min-width:0;padding:.5rem;border:1px solid var(--line-strong);border-radius:8px;
     background:var(--paper);color:var(--text);font-size:.9rem;
   }
   .row2{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;}
@@ -257,10 +260,11 @@
 <header class="bar">
   <span class="title">スコアブック</span>
   <span class="meta" id="metaLine">—</span>
-  <span class="spacer"></span>
-  <span class="save-state" id="saveState"></span>
-  <button id="btnView">表を見る</button>
-  <button id="btnMenu" class="hamburger" aria-label="メニュー" title="メニュー"><span></span><span></span><span></span></button>
+  <div class="hdr-actions">
+    <span class="save-state" id="saveState"></span>
+    <button id="btnView">表を見る</button>
+    <button id="btnMenu" class="hamburger" aria-label="メニュー" title="メニュー"><span></span><span></span><span></span></button>
+  </div>
 </header>
 
 <div class="print-title" id="printTitle"></div>
