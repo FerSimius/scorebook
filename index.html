@@ -179,6 +179,15 @@
   .prow .o{font-weight:700;color:var(--field);text-align:center;}
   .prow input,.prow select{padding:.35rem;font-size:.82rem;border:1px solid var(--line-strong);border-radius:6px;background:var(--paper);color:var(--text);}
 
+  /* history list */
+  .hist-list{display:flex;flex-direction:column;max-height:60vh;overflow:auto;}
+  .hist-row{display:flex;align-items:center;gap:.5rem;padding:.55rem 0;border-bottom:1px solid var(--line);}
+  .hist-row:last-child{border-bottom:none;}
+  .hist-row .info{flex:1;min-width:0;}
+  .hist-row .info .vs{font-weight:700;font-size:.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .hist-row .info .sub2{font-size:.74rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .hist-row .now-badge{color:var(--field);font-weight:700;}
+
   /* ---- live view ---- */
   #liveView{padding:.5rem .6rem 1.2rem;}
   .scoreboard{overflow-x:auto;-webkit-overflow-scrolling:touch;background:var(--surface);border:1px solid var(--line-strong);border-radius:10px;margin-bottom:.6rem;}
@@ -245,6 +254,7 @@
   <button id="btnSetup">試合設定</button>
   <button id="btnInning">延長する</button>
   <button id="btnPrint">PDF書き出し</button>
+  <button id="btnHistory">履歴</button>
   <button id="btnBackup">バックアップ</button>
   <button id="btnNew">新規</button>
 </header>
@@ -275,7 +285,12 @@ const PITCH = { // ball-count marks
 };
 const STORAGE_KEY = "scorebook.v1";
 const ROSTER_KEY = "scorebook.roster.v1";
+const HISTORY_KEY = "scorebook.history.v1";
+const HISTORY_MAX = 300;
 let ROSTER=[]; let ROSTER_TEAM="";
+let HISTORY=[];
+function loadHistory(){ try{ const raw=localStorage.getItem(HISTORY_KEY); const d=raw?JSON.parse(raw):[]; HISTORY=Array.isArray(d)?d:[]; }catch(e){ HISTORY=[]; } }
+function saveHistory(){ try{ localStorage.setItem(HISTORY_KEY, JSON.stringify(HISTORY)); }catch(e){} }
 function loadRoster(){ try{ const raw=localStorage.getItem(ROSTER_KEY); const d=raw?JSON.parse(raw):null;
   if(Array.isArray(d)){ ROSTER=d; ROSTER_TEAM=""; }
   else if(d&&typeof d==="object"){ ROSTER=d.players||[]; ROSTER_TEAM=d.name||""; }
@@ -319,7 +334,7 @@ function today(){const d=new Date();return `${d.getFullYear()}-${String(d.getMon
 /* ---------------- persistence ---------------- */
 let saveTimer=null;
 function save(){
-  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(S)); flashSaved(); }
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(S)); flashSaved(); archiveCurrentGame(); }
   catch(e){ document.getElementById("saveState").textContent="保存不可"; }
 }
 function scheduleSave(){ clearTimeout(saveTimer); saveTimer=setTimeout(save,400); }
@@ -328,6 +343,68 @@ function load(){
   try{ const raw=localStorage.getItem(STORAGE_KEY); if(raw){ S=JSON.parse(raw); return true; } }
   catch(e){}
   return false;
+}
+
+/* ---------------- game history (past games) ---------------- */
+function finalScoreOf(g){
+  const res={};
+  ["home","away"].forEach(k=>{
+    const tm=g.teams[k]; let r=0;
+    for(let n=1;n<=g.innings;n++){ r+=liveRuns(tm,n)+((g.pre.runs[k]&&g.pre.runs[k][n])||0); }
+    res[k]=r;
+  });
+  return res;
+}
+function isBlankGame(g){
+  const noCells=["home","away"].every(k=>!g.teams[k].cells||!Object.keys(g.teams[k].cells).length);
+  const noPitches=!(g.live&&g.live.pitches&&g.live.pitches.length);
+  const noPre=!g.pre||(!Object.keys(g.pre.runs.home||{}).length&&!Object.keys(g.pre.runs.away||{}).length&&!g.pre.hits.home&&!g.pre.hits.away);
+  return noCells&&noPitches&&noPre;
+}
+function archiveCurrentGame(){
+  if(!S||isBlankGame(S)) return;
+  if(!S.__histId) S.__histId=Date.now()+"-"+Math.random().toString(36).slice(2);
+  const entry={ id:S.__histId, savedAt:new Date().toISOString(), meta:{...S.meta}, score:finalScoreOf(S), game:JSON.parse(JSON.stringify(S)) };
+  const idx=HISTORY.findIndex(h=>h.id===entry.id);
+  if(idx>=0) HISTORY[idx]=entry; else HISTORY.unshift(entry);
+  if(HISTORY.length>HISTORY_MAX) HISTORY.length=HISTORY_MAX;
+  saveHistory();
+}
+function openHistory(){
+  loadHistory();
+  const list=HISTORY.slice().sort((a,b)=>(b.savedAt||"").localeCompare(a.savedAt||""));
+  let rows=list.map(h=>{
+    const isCurrent=S&&S.__histId===h.id;
+    const title=[h.meta.date,h.meta.tourney].filter(Boolean).join("　");
+    return `<div class="hist-row">
+      <div class="info">
+        <div class="vs">${esc(h.meta.away)} ${h.score.away} - ${h.score.home} ${esc(h.meta.home)}${isCurrent?'<span class="now-badge"> ・編集中</span>':''}</div>
+        <div class="sub2">${esc(title)}${h.meta.ground?("　"+esc(h.meta.ground)):""}</div>
+      </div>
+      <button class="btn" data-histopen="${esc(h.id)}" ${isCurrent?"disabled":""}>開く</button>
+      <button class="btn ghost" data-histdel="${esc(h.id)}">削除</button>
+    </div>`;
+  }).join("");
+  if(!list.length) rows=`<div class="sub">まだ試合の記録がありません。</div>`;
+  showModal(`<h2>過去の試合</h2><div class="sub">「開く」を押すとその試合を編集・表示・PDF出力できます。</div><div class="hist-list">${rows}</div><div class="modal-actions"><span class="spacer"></span><button class="btn ghost" id="hClose">閉じる</button></div>`);
+  document.getElementById("hClose").onclick=closeModal;
+  document.querySelectorAll("[data-histopen]").forEach(b=>b.onclick=()=>openHistoryGame(b.dataset.histopen));
+  document.querySelectorAll("[data-histdel]").forEach(b=>b.onclick=()=>confirmDeleteHistory(b.dataset.histdel));
+}
+function openHistoryGame(id){
+  const entry=HISTORY.find(h=>h.id===id);
+  if(!entry) return;
+  archiveCurrentGame();
+  S=JSON.parse(JSON.stringify(entry.game));
+  S.__histId=entry.id;
+  migrate();
+  save(); closeModal(); renderAll();
+}
+function confirmDeleteHistory(id){
+  showModal(`<h2>この試合を削除しますか？</h2><div class="sub">この操作は取り消せません。</div>
+    <div class="modal-actions"><span class="spacer"></span><button class="btn ghost" id="hdCancel">キャンセル</button><button class="btn danger" id="hdOk">削除する</button></div>`);
+  document.getElementById("hdCancel").onclick=openHistory;
+  document.getElementById("hdOk").onclick=()=>{ HISTORY=HISTORY.filter(h=>h.id!==id); saveHistory(); openHistory(); };
 }
 
 /* ---------------- helpers ---------------- */
@@ -1333,7 +1410,7 @@ function confirmNew(){
     <div class="modal-actions"><span class="spacer"></span><button class="btn ghost" id="cnCancel">キャンセル</button><button class="btn danger" id="cnOk">新規で始める</button></div>`;
   showModal(h);
   document.getElementById("cnCancel").onclick=closeModal;
-  document.getElementById("cnOk").onclick=()=>{ S=newGame(); applySavedTeam(); save(); closeModal(); renderAll(); };
+  document.getElementById("cnOk").onclick=()=>{ archiveCurrentGame(); S=newGame(); applySavedTeam(); save(); closeModal(); renderAll(); };
 }
 function swapTeams(){
   const t=S.teams.home; S.teams.home=S.teams.away; S.teams.away=t;
@@ -1412,9 +1489,10 @@ function printHTML(html){
 
 /* ---------------- backup (export / import all data) ---------------- */
 function backupPayload(){
-  return { app:"scorebook", version:1, exportedAt:new Date().toISOString(), game:S, roster:{name:ROSTER_TEAM, players:ROSTER} };
+  return { app:"scorebook", version:2, exportedAt:new Date().toISOString(), game:S, roster:{name:ROSTER_TEAM, players:ROSTER}, history:HISTORY };
 }
 async function exportBackup(){
+  archiveCurrentGame();
   const data=JSON.stringify(backupPayload(), null, 2);
   const fn=("スコアブック_バックアップ_"+(S.meta.date||today())).replace(/\s+/g,"")+".json";
   try{
@@ -1453,6 +1531,10 @@ function confirmImport(data){
   document.getElementById("imOk").onclick=()=>{
     S=data.game; migrate();
     if(data.roster){ ROSTER=data.roster.players||[]; ROSTER_TEAM=data.roster.name||""; saveRoster(); }
+    if(Array.isArray(data.history)){
+      data.history.forEach(h=>{ const idx=HISTORY.findIndex(x=>x.id===h.id); if(idx>=0) HISTORY[idx]=h; else HISTORY.push(h); });
+      saveHistory();
+    }
     save(); closeModal(); renderAll();
     showModal(`<h2>復元しました</h2><div class="modal-actions"><span class="spacer"></span><button class="btn primary" id="imDone">OK</button></div>`);
     document.getElementById("imDone").onclick=closeModal;
@@ -1482,6 +1564,7 @@ document.getElementById("btnInning").onclick=()=>{
   S.innings++; scheduleSave(); renderAll();
 };
 document.getElementById("btnPrint").onclick=exportSheet;
+document.getElementById("btnHistory").onclick=openHistory;
 document.getElementById("btnBackup").onclick=openBackup;
 document.getElementById("btnNew").onclick=confirmNew;
 if(navigator.storage && navigator.storage.persist){ navigator.storage.persist().catch(()=>{}); }
@@ -1489,6 +1572,7 @@ const _fresh=!load();
 if(_fresh) S=newGame();
 migrate();
 loadRoster();
+loadHistory();
 if(_fresh) applySavedTeam();
 renderAll();
 </script>
