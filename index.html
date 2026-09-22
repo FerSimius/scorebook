@@ -256,7 +256,7 @@
   <button id="btnPrint">PDF書き出し</button>
   <button id="btnHistory">履歴</button>
   <button id="btnBackup">バックアップ</button>
-  <button id="btnNew">新規</button>
+  <button id="btnNew">保存して新規</button>
 </header>
 
 <div class="print-title" id="printTitle"></div>
@@ -940,7 +940,7 @@ function commitWizard(advance){
 
 /* ---------------- team roster (persistent) ---------------- */
 function openRoster(backFn){
-  let h=`<h2>自チームの選手名簿</h2><div class="sub">チーム名・選手名・背番号を保存しておくと、毎試合それを呼び出せます。ここは試合を「新規」にしても消えません。</div>`;
+  let h=`<h2>自チームの選手名簿</h2><div class="sub">チーム名・選手名・背番号を保存しておくと、毎試合それを呼び出せます。ここは「保存して新規」にしても消えません。</div>`;
   h+=`<div class="field"><label>自チーム名</label><input id="rTeam" value="${esc(ROSTER_TEAM)}" placeholder="例）〇〇クラブ"></div>`;
   h+=`<div class="step-title">選手（名前・背番号）</div>`;
   h+=`<div class="plist" id="rosterList">`;
@@ -1406,8 +1406,8 @@ function baseMenu(base){
 }
 
 function confirmNew(){
-  let h=`<h2>新しい試合を始めますか？</h2><div class="sub">現在の試合の記録は消えます（選手名簿は残ります）。</div>
-    <div class="modal-actions"><span class="spacer"></span><button class="btn ghost" id="cnCancel">キャンセル</button><button class="btn danger" id="cnOk">新規で始める</button></div>`;
+  let h=`<h2>新しい試合を始めますか？</h2><div class="sub">現在の試合は「履歴」に保存してから、新しい試合を始めます（選手名簿は残ります）。</div>
+    <div class="modal-actions"><span class="spacer"></span><button class="btn ghost" id="cnCancel">キャンセル</button><button class="btn danger" id="cnOk">保存して新規で始める</button></div>`;
   showModal(h);
   document.getElementById("cnCancel").onclick=closeModal;
   document.getElementById("cnOk").onclick=()=>{ archiveCurrentGame(); S=newGame(); applySavedTeam(); save(); closeModal(); renderAll(); };
