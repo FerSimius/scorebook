@@ -1688,7 +1688,7 @@ function wasedaTeamTableHTML(tm,teamKey,opp){
   let html='<table class="wsheet"><thead><tr>';
   html+='<th class="wnar">刺殺</th><th class="wnar">補殺</th><th class="wnar">失策</th><th class="wnar">併殺</th><th class="wnar">打順</th>';
   html+='<th class="wnar">先発</th><th class="wnar">打ち方</th><th class="wnar">背番号</th><th class="wname">選手名</th>';
-  cols.forEach(i=>html+=`<th>${i}回</th>`);
+  cols.forEach(i=>html+=`<th class="wpa">${i}回</th>`);
   html+='<th class="wnar">打席数</th><th class="wnar">打数</th><th class="wnar">得点</th><th class="wnar">単打</th><th class="wnar">二塁打</th><th class="wnar">三塁打</th><th class="wnar">本塁打</th><th class="wnar">打点</th><th class="wnar">盗塁</th><th class="wnar">犠打</th><th class="wnar">犠飛</th><th class="wnar">四球</th><th class="wnar">死球</th><th class="wnar">三振</th>';
   html+='</tr></thead><tbody>';
   for(let o=1;o<=9;o++){
@@ -1756,7 +1756,7 @@ table.wsheet th,table.wsheet td{border:1px solid var(--line);padding:1px 2px;tex
 table.wsheet thead th{background:var(--field-soft);font-size:8px;}
 .wnar{width:20px;}
 .wname{min-width:62px;width:62px;text-align:left!important;font-size:9px;white-space:nowrap;}
-table.wsheet td.pa{width:48px;height:38px;padding:0;} table.wsheet td.pa svg{display:block;width:100%;height:100%;}
+table.wsheet .wpa{width:48px;} table.wsheet td.pa{height:38px;padding:0;} table.wsheet td.pa svg{display:block;width:100%;height:100%;}
 .wh-sub{font-size:10px;font-weight:700;margin:4px 0 2px;color:var(--field);}
 table.wpitch{table-layout:auto;}
 .pnote{font-size:8px;color:var(--muted);line-height:1.4;margin:2px 0 6px;}
