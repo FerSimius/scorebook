@@ -1668,21 +1668,21 @@ function openMenu(){
   showModal(`<h2>メニュー <span class="ver">v${APP_VERSION}</span></h2>
     <div class="menu-list">
       <button class="btn" id="moSetup">試合設定</button>
+      <button class="btn" id="moPrint">PDF書き出し</button>
+      <button class="btn danger" id="moNew">保存して新規</button>
       <button class="btn" id="moInning">延長する</button>
       <button class="btn danger" id="moEndNow">試合終了にする（時間切れ・コールド）</button>
-      <button class="btn" id="moPrint">PDF書き出し</button>
       <button class="btn" id="moHistory">履歴（過去の試合）</button>
       <button class="btn" id="moBackup">バックアップ</button>
-      <button class="btn danger" id="moNew">保存して新規</button>
     </div>
     <div class="modal-actions"><span class="spacer"></span><button class="btn ghost" id="moClose">閉じる</button></div>`);
   document.getElementById("moSetup").onclick=()=>{ closeModal(); openSetup(); };
+  document.getElementById("moPrint").onclick=()=>{ closeModal(); exportSheet(); };
+  document.getElementById("moNew").onclick=()=>{ closeModal(); confirmNew(); };
   document.getElementById("moInning").onclick=()=>{ closeModal(); extendInning(); };
   document.getElementById("moEndNow").onclick=()=>{ closeModal(); forceEndGame(); };
-  document.getElementById("moPrint").onclick=()=>{ closeModal(); exportSheet(); };
   document.getElementById("moHistory").onclick=()=>{ closeModal(); openHistory(); };
   document.getElementById("moBackup").onclick=()=>{ closeModal(); openBackup(); };
-  document.getElementById("moNew").onclick=()=>{ closeModal(); confirmNew(); };
   document.getElementById("moClose").onclick=closeModal;
 }
 
