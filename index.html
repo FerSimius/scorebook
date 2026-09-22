@@ -293,7 +293,7 @@ const PITCH = { // ball-count marks
   ball:{g:"●",label:"ボール"},
   foul:{g:"△",label:"ファウル"},
 };
-const APP_VERSION = "1.0.0";
+const APP_VERSION = "1.1.0";
 const STORAGE_KEY = "scorebook.v1";
 const ROSTER_KEY = "scorebook.roster.v1";
 const HISTORY_KEY = "scorebook.history.v1";
@@ -1451,18 +1451,26 @@ tfoot td{font-weight:700;text-align:center;background:var(--field-soft);font-siz
 .scoreboard{margin-bottom:8px;} .scoreboard table{border-collapse:collapse;font-size:12px;}
 .scoreboard th,.scoreboard td{border:1px solid var(--line);padding:2px 6px;text-align:center;} .scoreboard td.team{text-align:left;font-weight:700;} .scoreboard .rhe{font-weight:800;background:var(--field-soft);}
 .legend{font-size:11px;line-height:1.6;padding:8px 10px;border:1px solid var(--line-strong);border-radius:8px;margin-top:12px;} .legend b{color:var(--field);}
+.team-page{page-break-after:always;break-after:page;}
+.team-page:last-child{page-break-after:auto;break-after:auto;}
 @media print{.printbar{display:none;}}
 `;
 function buildPrintHTML(){
-  const prev=S.active; let sheets="";
-  ["away","home"].forEach(k=>{ S.active=k; sheets+=`<h3>${esc(S.teams[k].name)}</h3>`+pitchersLine(S.teams[k])+sheetTableHTML(S.teams[k]); });
-  S.active=prev;
+  const prev=S.active;
   const m=S.meta; const title=[m.date,m.tourney,(m.away+" vs "+m.home),m.ground].filter(Boolean).join("　");
+  const header=`<h2>スコアブック</h2><div style="color:#666;font-size:13px;margin-bottom:8px">${esc(title)}</div>`;
   const board=scoreboardHTML();
+  let pages="";
+  ["away","home"].forEach((k,i)=>{
+    S.active=k;
+    const teamBlock=`<h3>${esc(S.teams[k].name)}</h3>`+pitchersLine(S.teams[k])+sheetTableHTML(S.teams[k]);
+    const isFirst=i===0, isLast=i===1;
+    pages+=`<div class="team-page">${isFirst?header+board:""}${teamBlock}${isLast?legendHTML():""}</div>`;
+  });
+  S.active=prev;
   return `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>スコアブック</title><style>${PRINT_CSS}</style></head><body>`+
     `<div class="printbar"><button onclick="window.print()">印刷 / PDFで保存</button></div>`+
-    `<h2>スコアブック</h2><div style="color:#666;font-size:13px;margin-bottom:8px">${esc(title)}</div>`+
-    board+sheets+legendHTML()+`</body></html>`;
+    pages+`</body></html>`;
 }
 function legendHTML(){
   return `<div class="legend"><b>凡例</b>　守備位置：投1 捕2 一3 二4 三5 遊6 左7 中8 右9 ／ DH=D。安打=赤線・得点=ダイヤ塗り。K=三振、B=四球、HP=死球、IB=故意四球、E=失策、DP=併殺、×=走者アウト、犠打=□囲み・犠飛=△囲み。S=盗塁、W=暴投、P=捕逸、BK=ボーク。アウトは野手を連携順に（例 6-3）、自分で塁を踏めば番号+塁記号（A一・B二・C三・D本、例 3A/6B）。ボールカウント：●ボール／×見逃し／⊗空振り／△ファウル、✓＝その投球時に走者が動いた。色：赤＝安打・得点、青＝四死球・犠打犠飛。</div>`;
