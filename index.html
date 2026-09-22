@@ -1069,7 +1069,7 @@ function openPitchers(k){
 /* ---------------- players editor ---------------- */
 function openPlayers(o){
   const t=team();
-  let h=`<h2>${t.name}　打順の編集</h2><div class="sub">先発の入力と、控え選手との交代ができます。</div>`;
+  let h=`<h2>${esc(t.name)}　打順の編集</h2><div class="sub">先発の入力と、控え選手との交代ができます。</div>`;
   h+=`<div class="plist">`;
   const p=t.players[o-1];
   h+=playerRow(o,p,false,0);
