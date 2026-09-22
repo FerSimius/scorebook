@@ -68,6 +68,11 @@
     color:#fff;border-radius:8px;padding:.35rem .6rem;font-size:.8rem;
   }
   header.bar button:hover{background:rgba(255,255,255,.28);}
+  header.bar button.hamburger{
+    display:flex;flex-direction:column;justify-content:center;align-items:center;gap:.22rem;
+    width:2.3rem;height:2.1rem;padding:0;
+  }
+  header.bar button.hamburger span{display:block;width:1.15rem;height:2px;background:#fff;border-radius:1px;}
   .save-state{font-size:.72rem;opacity:.85;min-width:4.5rem;text-align:right;}
 
   /* ---- team tabs ---- */
@@ -255,7 +260,7 @@
   <span class="spacer"></span>
   <span class="save-state" id="saveState"></span>
   <button id="btnView">表を見る</button>
-  <button id="btnMenu">メニュー</button>
+  <button id="btnMenu" class="hamburger" aria-label="メニュー" title="メニュー"><span></span><span></span><span></span></button>
 </header>
 
 <div class="print-title" id="printTitle"></div>
