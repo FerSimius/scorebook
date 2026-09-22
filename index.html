@@ -322,6 +322,7 @@ function newGame(){
   return {
     meta:{date:today(), tourney:"", home:"自チーム", away:"相手チーム", ground:""},
     innings:9,
+    regInnings:9,
     active:"home",
     view:"live",
     live:{ inning:1, half:"top", pitches:[], order:{home:1, away:1} },
@@ -331,6 +332,7 @@ function newGame(){
 }
 function migrate(){
   if(!S.view) S.view="live";
+  if(!S.regInnings) S.regInnings=S.innings||9;
   if(!S.live) S.live={inning:1,half:"top",pitches:[],order:{home:1,away:1}};
   if(!S.live.pitches) S.live.pitches=[];
   if(!S.live.order) S.live.order={home:1,away:1};
@@ -436,6 +438,15 @@ function totalRuns(k){ let r=0; for(let n=1;n<=S.innings;n++){ r+=liveRuns(S.tea
 function liveTeam(){ return S.teams[battingSide()]; }
 function liveOrder(){ return S.live.order[battingSide()]; }
 function tmHasCell(tm,n){ for(let o=1;o<=9;o++){ if(tm.cells[cellKey(o,n)]) return true; } return false; }
+function highestRecordedInning(){
+  let hi=0;
+  for(let n=1;n<=S.innings;n++){
+    const has = tmHasCell(S.teams.home,n) || tmHasCell(S.teams.away,n) ||
+      (S.pre.runs.home&&S.pre.runs.home[n]) || (S.pre.runs.away&&S.pre.runs.away[n]);
+    if(has) hi=n;
+  }
+  return hi;
+}
 function liveRuns(tm,n){ let r=0; for(let o=1;o<=9;o++){ paList(tm,o,n).forEach(c=>{ if(c.run) r++; }); } return r; }
 function liveHits(tm,n){ let x=0; for(let o=1;o<=9;o++){ paList(tm,o,n).forEach(c=>{ if(c.category==="hit") x++; }); } return x; }
 function teamOuts(tm,i){ const k=tm===S.teams.home?"home":"away"; let n=(S.pre&&S.pre.outs&&S.pre.outs[k]&&S.pre.outs[k][i])||0; for(let o=1;o<=9;o++){ paList(tm,o,i).forEach(c=>{ if(c.outNumber) n++; if(c.advances) c.advances.forEach(a=>{ if(a.out) n++; }); }); } return Math.min(n,3); }
@@ -1106,6 +1117,7 @@ function openSetup(){
      <div class="field"><label>ホーム（後攻・裏）</label><input id="sHome" value="${esc(m.home)}"></div>
    </div>
    <div class="field"><label>球場</label><input id="sGround" value="${esc(m.ground)}" placeholder="例）〇〇球場"></div>
+   <div class="field"><label>正式回数（時間短縮などで7回制の場合は変更）</label><input id="sInnings" type="number" min="1" max="20" inputmode="numeric" value="${S.regInnings||S.innings||9}"></div>
    <button class="btn" id="sSwap" type="button" style="width:100%;margin:.2rem 0">⇄ ホーム／ビジターを入れ替え（スコアの上下も入れ替え）</button>
    <button class="btn" id="sRoster" type="button" style="width:100%;margin:.2rem 0">👤 自チームの選手名簿を編集…</button>
    <div class="row2"><button class="btn" id="sPitA" type="button">🥎 ${esc(m.away)}の投手</button><button class="btn" id="sPitH" type="button">🥎 ${esc(m.home)}の投手</button></div>
@@ -1122,6 +1134,10 @@ function openSetup(){
     m.date=val("sDate"); m.tourney=val("sTour"); m.ground=val("sGround");
     m.home=val("sHome")||m.home||"ホーム"; m.away=val("sAway")||m.away||"ビジター";
     S.teams.home.name=m.home; S.teams.away.name=m.away;
+    const newReg=Math.max(1, parseInt(val("sInnings"))||9);
+    S.regInnings=newReg;
+    if(newReg>S.innings) S.innings=newReg;
+    else if(newReg<S.innings && newReg>=highestRecordedInning()) S.innings=newReg;
     scheduleSave(); closeModal(); renderAll();
   };
 }
@@ -1398,7 +1414,7 @@ function changeHalf(){
   scheduleSave(); renderLive();
 }
 function gameOverAfterHalf(){
-  const REG=9;
+  const REG=S.regInnings||S.innings||9;
   if(S.live.inning<REG) return false;
   if(S.live.half==="bottom") return totalRuns("home")!==totalRuns("away");
   if(S.live.half==="top") return totalRuns("home")>totalRuns("away");
@@ -1643,11 +1659,17 @@ function extendInning(){
   if(S.live && S.live.over){ S.live.over=false; changeHalf(); return; }
   S.innings++; scheduleSave(); renderAll();
 }
+function forceEndGame(){
+  if(!S.live || S.live.over) return;
+  S.live.over=true; S.live.pitches=[];
+  scheduleSave(); renderAll();
+}
 function openMenu(){
   showModal(`<h2>メニュー <span class="ver">v${APP_VERSION}</span></h2>
     <div class="menu-list">
       <button class="btn" id="moSetup">試合設定</button>
       <button class="btn" id="moInning">延長する</button>
+      <button class="btn danger" id="moEndNow">試合終了にする（時間切れ・コールド）</button>
       <button class="btn" id="moPrint">PDF書き出し</button>
       <button class="btn" id="moHistory">履歴（過去の試合）</button>
       <button class="btn" id="moBackup">バックアップ</button>
@@ -1656,6 +1678,7 @@ function openMenu(){
     <div class="modal-actions"><span class="spacer"></span><button class="btn ghost" id="moClose">閉じる</button></div>`);
   document.getElementById("moSetup").onclick=()=>{ closeModal(); openSetup(); };
   document.getElementById("moInning").onclick=()=>{ closeModal(); extendInning(); };
+  document.getElementById("moEndNow").onclick=()=>{ closeModal(); forceEndGame(); };
   document.getElementById("moPrint").onclick=()=>{ closeModal(); exportSheet(); };
   document.getElementById("moHistory").onclick=()=>{ closeModal(); openHistory(); };
   document.getElementById("moBackup").onclick=()=>{ closeModal(); openBackup(); };
