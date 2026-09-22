@@ -245,6 +245,7 @@
   <button id="btnSetup">試合設定</button>
   <button id="btnInning">延長する</button>
   <button id="btnPrint">PDF書き出し</button>
+  <button id="btnBackup">バックアップ</button>
   <button id="btnNew">新規</button>
 </header>
 
@@ -1393,8 +1394,84 @@ async function exportSheet(){
       }
     }
   }catch(e){ if(e&&e.code==="declined") return; }
-  if(S.view==="live"){ S.view="grid"; renderAll(); }
-  try{ window.print(); }catch(e){}
+  printHTML(html);
+}
+function printHTML(html){
+  const ifr=document.createElement("iframe");
+  ifr.style.position="fixed"; ifr.style.right="0"; ifr.style.bottom="0";
+  ifr.style.width="0"; ifr.style.height="0"; ifr.style.border="0";
+  document.body.appendChild(ifr);
+  const cleanup=()=>{ if(ifr.parentNode) ifr.parentNode.removeChild(ifr); };
+  ifr.onload=()=>{
+    try{ ifr.contentWindow.focus(); ifr.contentWindow.print(); }catch(e){}
+    setTimeout(cleanup, 1000);
+  };
+  const doc=ifr.contentWindow.document;
+  doc.open(); doc.write(html); doc.close();
+}
+
+/* ---------------- backup (export / import all data) ---------------- */
+function backupPayload(){
+  return { app:"scorebook", version:1, exportedAt:new Date().toISOString(), game:S, roster:{name:ROSTER_TEAM, players:ROSTER} };
+}
+async function exportBackup(){
+  const data=JSON.stringify(backupPayload(), null, 2);
+  const fn=("スコアブック_バックアップ_"+(S.meta.date||today())).replace(/\s+/g,"")+".json";
+  try{
+    if(window.claude && window.claude.use){
+      const d=await window.claude.use("downloads");
+      if(d){ await d.save({filename:fn, data}); return true; }
+    }
+  }catch(e){ if(e&&e.code==="declined") return false; }
+  try{
+    const blob=new Blob([data],{type:"application/json"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a"); a.href=url; a.download=fn; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 2000);
+    return true;
+  }catch(e){ return false; }
+}
+function importBackupFile(file){
+  const reader=new FileReader();
+  reader.onload=()=>{
+    let data;
+    try{ data=JSON.parse(reader.result); }
+    catch(e){ data=null; }
+    if(!data || !data.game){
+      showModal(`<h2>読み込みに失敗しました</h2><div class="sub">スコアブックのバックアップファイルではないようです。</div><div class="modal-actions"><span class="spacer"></span><button class="btn primary" id="ibOk">閉じる</button></div>`);
+      document.getElementById("ibOk").onclick=closeModal;
+      return;
+    }
+    confirmImport(data);
+  };
+  reader.readAsText(file);
+}
+function confirmImport(data){
+  showModal(`<h2>バックアップを復元しますか？</h2><div class="sub">現在の試合データは上書きされます。この操作は取り消せません。</div>
+    <div class="modal-actions"><span class="spacer"></span><button class="btn ghost" id="imCancel">キャンセル</button><button class="btn danger" id="imOk">復元する</button></div>`);
+  document.getElementById("imCancel").onclick=closeModal;
+  document.getElementById("imOk").onclick=()=>{
+    S=data.game; migrate();
+    if(data.roster){ ROSTER=data.roster.players||[]; ROSTER_TEAM=data.roster.name||""; saveRoster(); }
+    save(); closeModal(); renderAll();
+    showModal(`<h2>復元しました</h2><div class="modal-actions"><span class="spacer"></span><button class="btn primary" id="imDone">OK</button></div>`);
+    document.getElementById("imDone").onclick=closeModal;
+  };
+}
+function openBackup(){
+  showModal(`<h2>データのバックアップ</h2>
+    <div class="sub">試合の記録は自動でこの端末に保存されますが、機種変更やアプリの再インストールに備えて、バックアップファイルを保存しておくと安心です。</div>
+    <div class="modal-actions"><button class="btn primary" id="bkExport">バックアップを保存</button></div>
+    <div class="field"><label>バックアップから復元</label><input type="file" accept="application/json" id="bkFile"></div>
+    <div class="modal-actions"><span class="spacer"></span><button class="btn ghost" id="bkClose">閉じる</button></div>`);
+  document.getElementById("bkExport").onclick=async()=>{
+    const ok=await exportBackup();
+    if(ok===false) return;
+    showModal(`<h2>保存しました</h2><div class="sub">バックアップファイルを保存先やクラウドストレージに控えておくと安心です。</div><div class="modal-actions"><span class="spacer"></span><button class="btn primary" id="bkDone">OK</button></div>`);
+    document.getElementById("bkDone").onclick=closeModal;
+  };
+  document.getElementById("bkFile").onchange=(e)=>{ const f=e.target.files[0]; if(f) importBackupFile(f); };
+  document.getElementById("bkClose").onclick=closeModal;
 }
 
 /* ---------------- boot ---------------- */
@@ -1405,7 +1482,9 @@ document.getElementById("btnInning").onclick=()=>{
   S.innings++; scheduleSave(); renderAll();
 };
 document.getElementById("btnPrint").onclick=exportSheet;
+document.getElementById("btnBackup").onclick=openBackup;
 document.getElementById("btnNew").onclick=confirmNew;
+if(navigator.storage && navigator.storage.persist){ navigator.storage.persist().catch(()=>{}); }
 const _fresh=!load();
 if(_fresh) S=newGame();
 migrate();
