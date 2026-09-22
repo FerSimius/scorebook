@@ -1342,12 +1342,12 @@ function renderLive(){
         <span class="grp">S ${dots("s",s,2)}</span>
         <span class="grp">O ${dots("o",o,2)}</span>
       </span></div>`;
+  h+=`<div class="pitch-bar"><span class="seq">${S.live.pitches.map(x=>PITCH[x].g).join(" ")||"&nbsp;"}</span></div>`;
   h+=`<div class="field-wrap"><div class="diamond">${diamondSVG()}
         ${bb(2,110,42)}${bb(1,178,105)}${bb(3,42,105)}
       </div>
       <div class="atbat">
         <div class="ctrl-title">投球（カウント）</div>
-        <div class="pitch-bar"><span class="seq">${S.live.pitches.map(x=>PITCH[x].g).join(" ")||"&nbsp;"}</span></div>
         <div class="pitchrow">
           <button data-lp="ball">ボール</button>
           <button data-lp="called">見逃し</button>
