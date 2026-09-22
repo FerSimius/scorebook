@@ -1545,16 +1545,23 @@ async function exportSheet(){
   printHTML(html);
 }
 function printHTML(html){
-  // スマホのブラウザは、スクリプトからの自動印刷（隠しiframeでの print()）を
-  // 「自動的な印刷」としてブロックすることがあるため、新しいタブでスコアシートを開き、
+  // スマホのブラウザは、スクリプトからの自動印刷（隠しiframeでのprint()や、
+  // window.open()の連続呼び出し）を「自動的な動作」としてブロックすることがあるため、
+  // Blob URLへの通常のリンククリックとしてスコアシートを新しいタブで開き、
   // ページ上の「印刷 / PDFで保存」ボタンをユーザー自身に押してもらう方式にする。
-  const win=window.open("", "_blank");
-  if(!win){
+  try{
+    const blob=new Blob([html], {type:"text/html"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url; a.target="_blank"; a.rel="noopener";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 60000);
+  }catch(e){
     showModal(`<h2>新しいタブを開けませんでした</h2><div class="sub">ポップアップがブロックされた可能性があります。ブラウザの設定でこのサイトのポップアップを許可してから、もう一度お試しください。</div><div class="modal-actions"><span class="spacer"></span><button class="btn primary" id="exOk2">OK</button></div>`);
     const ok=document.getElementById("exOk2"); if(ok) ok.onclick=closeModal;
-    return;
   }
-  win.document.open(); win.document.write(html); win.document.close();
 }
 
 /* ---------------- backup (export / import all data) ---------------- */
