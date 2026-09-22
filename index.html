@@ -143,8 +143,9 @@
     width:100%;min-width:0;padding:.5rem;border:1px solid var(--line-strong);border-radius:8px;
     background:var(--paper);color:var(--text);font-size:.9rem;
   }
-  .row2{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;}
-  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem;}
+  .field input[type="date"]{-webkit-appearance:none;appearance:none;}
+  .row2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.5rem;}
+  .row3{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr);gap:.5rem;}
 
   .chips{display:flex;flex-wrap:wrap;gap:.4rem;margin:.3rem 0 .6rem;}
   .chip{
@@ -190,6 +191,7 @@
   /* header menu */
   .menu-list{display:flex;flex-direction:column;gap:.5rem;margin:.4rem 0;}
   .menu-list .btn{width:100%;text-align:center;}
+  .ver{font-size:.72rem;font-weight:400;color:var(--muted);}
 
   /* history list */
   .hist-list{display:flex;flex-direction:column;max-height:60vh;overflow:auto;}
@@ -291,6 +293,7 @@ const PITCH = { // ball-count marks
   ball:{g:"●",label:"ボール"},
   foul:{g:"△",label:"ファウル"},
 };
+const APP_VERSION = "1.0.0";
 const STORAGE_KEY = "scorebook.v1";
 const ROSTER_KEY = "scorebook.roster.v1";
 const HISTORY_KEY = "scorebook.history.v1";
@@ -1570,7 +1573,7 @@ function extendInning(){
   S.innings++; scheduleSave(); renderAll();
 }
 function openMenu(){
-  showModal(`<h2>メニュー</h2>
+  showModal(`<h2>メニュー <span class="ver">v${APP_VERSION}</span></h2>
     <div class="menu-list">
       <button class="btn" id="moSetup">試合設定</button>
       <button class="btn" id="moInning">延長する</button>
