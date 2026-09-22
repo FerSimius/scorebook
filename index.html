@@ -617,7 +617,7 @@ function cellStackSVG(pas,o,i){
 function cellSVG(c,o,i){
   let s=`<svg viewBox="0 0 120 96" xmlns="http://www.w3.org/2000/svg">`;
   // faint diamond outline (dashed, touching the mid-edges of the cell — matches the paper scoresheet)
-  s+=`<polygon points="${D.HOME.join(",")} ${D.B1.join(",")} ${D.B2.join(",")} ${D.B3.join(",")}" fill="none" stroke="var(--line)" stroke-width="1" stroke-dasharray="2.5 2"/>`;
+  s+=`<polygon points="${D.HOME.join(",")} ${D.B1.join(",")} ${D.B2.join(",")} ${D.B3.join(",")}" fill="none" stroke="var(--line-strong)" stroke-width="1.4" stroke-dasharray="3 2"/>`;
   // ball-count column: pitches (need c), then advance-timing checks (cross-cell; shown even on an empty cell)
   {
     let y=11;
@@ -1739,7 +1739,7 @@ function printNotesHTML(){
 /* ---------------- export (printable HTML the viewer can save & print to PDF) ---------------- */
 const PRINT_CSS=`
 @page{size:A4 landscape;margin:8mm;}
-:root{--ink:#1c1c1c;--ink-hit:#c0392b;--ink-blue:#1f5fbf;--paper:#fff;--surface:#fff;--line:#d9d4c6;--line-strong:#b7b0a0;--field:#2f7d4f;--field-soft:#eef3ee;--text:#1c1c1c;--muted:#6b6b6b;}
+:root{--ink:#1c1c1c;--ink-hit:#c0392b;--ink-blue:#1f5fbf;--paper:#fff;--surface:#fff;--line:#888;--line-strong:#444;--field:#2f7d4f;--field-soft:#eef3ee;--text:#1c1c1c;--muted:#555;}
 *{box-sizing:border-box;}
 body{margin:10px;color:var(--text);background:#fff;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",Meiryo,sans-serif;}
 h2{margin:0 0 4px;} h3{margin:8px 0 3px;}
@@ -1754,9 +1754,9 @@ h2{margin:0 0 4px;} h3{margin:8px 0 3px;}
 table.wsheet{border-collapse:collapse;width:100%;font-size:8px;margin-bottom:4px;table-layout:fixed;}
 table.wsheet th,table.wsheet td{border:1px solid var(--line);padding:1px 2px;text-align:center;overflow:hidden;}
 table.wsheet thead th{background:var(--field-soft);font-size:8px;}
-.wnar{width:22px;}
-.wname{min-width:70px;width:70px;text-align:left!important;font-size:9px;white-space:nowrap;}
-table.wsheet td.pa{width:38px;height:30px;padding:0;} table.wsheet td.pa svg{display:block;width:100%;height:100%;}
+.wnar{width:20px;}
+.wname{min-width:62px;width:62px;text-align:left!important;font-size:9px;white-space:nowrap;}
+table.wsheet td.pa{width:48px;height:38px;padding:0;} table.wsheet td.pa svg{display:block;width:100%;height:100%;}
 .wh-sub{font-size:10px;font-weight:700;margin:4px 0 2px;color:var(--field);}
 table.wpitch{table-layout:auto;}
 .pnote{font-size:8px;color:var(--muted);line-height:1.4;margin:2px 0 6px;}
