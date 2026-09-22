@@ -310,7 +310,7 @@ const PITCH = { // ball-count marks
 };
 const ADV_REASON = {S:"盗塁", W:"暴投", P:"捕逸", BK:"ボーク", "打":"打者進塁", "進":"その他"};
 const BASE_LABELS = {1:"一塁", 2:"二塁", 3:"三塁", 4:"本塁"};
-const APP_VERSION = "1.3.2";
+const APP_VERSION = "1.4.0";
 const STORAGE_KEY = "scorebook.v1";
 const ROSTER_KEY = "scorebook.roster.v1";
 const HISTORY_KEY = "scorebook.history.v1";
@@ -337,7 +337,10 @@ function blankTeam(name){
 }
 function newGame(){
   return {
-    meta:{date:today(), tourney:"", home:"自チーム", away:"相手チーム", ground:""},
+    meta:{date:today(), tourney:"", home:"自チーム", away:"相手チーム", ground:"",
+      startTime:"", endTime:"", groundCondition:"", weather:"", windDir:"",
+      umpireChief:"", umpireBase1:"", umpireBase2:"", umpireBase3:"",
+      managerHome:"", managerAway:"", notes:"", participants:""},
     innings:9,
     regInnings:9,
     active:"home",
@@ -348,6 +351,8 @@ function newGame(){
   };
 }
 function migrate(){
+  if(!S.meta) S.meta={};
+  ["startTime","endTime","groundCondition","weather","windDir","umpireChief","umpireBase1","umpireBase2","umpireBase3","managerHome","managerAway","notes","participants"].forEach(k=>{ if(S.meta[k]==null) S.meta[k]=""; });
   if(!S.view) S.view="live";
   if(!S.regInnings) S.regInnings=S.innings||9;
   if(!S.live) S.live={inning:1,half:"top",pitches:[],order:{home:1,away:1}};
@@ -598,8 +603,9 @@ function lineupCellHTML(t,o){
 }
 
 /* ---------------- cell SVG (auto-draw) ---------------- */
-// square diamond: HOME bottom-left, 1B bottom-right, 2B top-right, 3B top-left
-const D = { HOME:[32,82], B1:[110,82], B2:[110,18], B3:[32,18] };
+// rotated diamond (45°), points touching the mid-edges of the cell: HOME bottom, 1B right, 2B top, 3B left
+const D = { HOME:[60,88], B1:[106,48], B2:[60,8], B3:[14,48] };
+const D_CTR=[60,48];
 const PATH_ORDER = [D.HOME, D.B1, D.B2, D.B3, D.HOME]; // home->1->2->3->home
 function cellStackSVG(pas,o,i){
   if(!pas || !pas.length) return cellSVG(null,o,i);
@@ -610,58 +616,58 @@ function cellStackSVG(pas,o,i){
 }
 function cellSVG(c,o,i){
   let s=`<svg viewBox="0 0 120 96" xmlns="http://www.w3.org/2000/svg">`;
-  // faint diamond outline
-  s+=`<polygon points="${D.HOME.join(",")} ${D.B1.join(",")} ${D.B2.join(",")} ${D.B3.join(",")}" fill="none" stroke="var(--line)" stroke-width="1"/>`;
+  // faint diamond outline (dashed, touching the mid-edges of the cell — matches the paper scoresheet)
+  s+=`<polygon points="${D.HOME.join(",")} ${D.B1.join(",")} ${D.B2.join(",")} ${D.B3.join(",")}" fill="none" stroke="var(--line)" stroke-width="1" stroke-dasharray="2.5 2"/>`;
   // ball-count column: pitches (need c), then advance-timing checks (cross-cell; shown even on an empty cell)
   {
-    let y=12;
-    if(c) (c.pitches||[]).slice(0,7).forEach(p=>{
-      s+=`<text x="10" y="${y}" font-size="9" fill="var(--ink)" text-anchor="middle" dominant-baseline="middle">${PITCH[p]?PITCH[p].g:""}</text>`;
-      y+=11;
+    let y=11;
+    if(c) (c.pitches||[]).slice(0,6).forEach(p=>{
+      s+=`<text x="7" y="${y}" font-size="8" fill="var(--ink)" text-anchor="middle" dominant-baseline="middle">${PITCH[p]?PITCH[p].g:""}</text>`;
+      y+=9;
     });
     if(o && i){
       const t=team(); let checks=0;
       for(let oo=1;oo<=9;oo++){ paList(t,oo,i).forEach(cc=>{ if(cc.advances) cc.advances.forEach(a=>{ if(a.duringOrder===o) checks++; }); }); }
-      for(let k=0;k<checks && y<=92;k++){ s+=`<text x="10" y="${y}" font-size="9" fill="var(--ink-blue)" text-anchor="middle" dominant-baseline="middle">✓</text>`; y+=11; }
+      for(let k=0;k<checks && y<=44;k++){ s+=`<text x="7" y="${y}" font-size="8" fill="var(--ink-blue)" text-anchor="middle" dominant-baseline="middle">✓</text>`; y+=9; }
     }
   }
   if(!c){ return s+`</svg>`; }
   const col = c.color==="hit"?"var(--ink-hit)":c.color==="blue"?"var(--ink-blue)":"var(--ink)";
   // scored -> fill diamond softly
   if(c.run){
-    s+=`<polygon points="${D.HOME.join(",")} ${D.B1.join(",")} ${D.B2.join(",")} ${D.B3.join(",")}" fill="var(--ink-hit)" fill-opacity="0.10" stroke="none"/>`;
+    s+=`<polygon points="${D.HOME.join(",")} ${D.B1.join(",")} ${D.B2.join(",")} ${D.B3.join(",")}" fill="var(--ink-hit)" fill-opacity="0.12" stroke="none"/>`;
   }
-  // runner path along square edges up to reachedBase (hits get a drawn line; non-hit reaches: light)
+  // runner path along the diamond edges up to reachedBase (hits get a drawn line; non-hit reaches: dashed)
   if(c.reachedBase>0){
     const pts=PATH_ORDER.slice(0, Math.min(c.reachedBase,4)+1);
     const dash = c.color==="hit" ? "" : `stroke-dasharray="3 3"`;
-    s+=`<polyline points="${pts.map(p=>p.join(",")).join(" ")}" fill="none" stroke="${col}" stroke-width="2.4" ${dash} stroke-linejoin="round" stroke-linecap="round"/>`;
+    s+=`<polyline points="${pts.map(p=>p.join(",")).join(" ")}" fill="none" stroke="${col}" stroke-width="2.2" ${dash} stroke-linejoin="round" stroke-linecap="round"/>`;
   }
   // runner advancement overlay (does not replace the batting result)
   if(c.advances && c.advances.length){
     const finalB=Math.min(4, c.advances[c.advances.length-1].toBase);
     const seg=[]; for(let b=c.reachedBase;b<=finalB;b++){ if(PATH_ORDER[b]) seg.push(PATH_ORDER[b]); }
-    if(seg.length>1) s+=`<polyline points="${seg.map(p=>p.join(",")).join(" ")}" fill="none" stroke="var(--ink)" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>`;
-    c.advances.forEach(a=>{ const tb=Math.min(4,a.toBase); const bp=PATH_ORDER[tb]; if(!bp) return; const nx=bp[0]+(71-bp[0])*0.22, ny=bp[1]+(50-bp[1])*0.22;
-      s+=`<text x="${nx}" y="${ny}" font-size="9" fill="var(--ink)" text-anchor="middle" dominant-baseline="middle">${esc(a.reason)}</text>`; });
+    if(seg.length>1) s+=`<polyline points="${seg.map(p=>p.join(",")).join(" ")}" fill="none" stroke="var(--ink)" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+    c.advances.forEach(a=>{ const tb=Math.min(4,a.toBase); const bp=PATH_ORDER[tb]; if(!bp) return; const nx=bp[0]+(D_CTR[0]-bp[0])*0.3, ny=bp[1]+(D_CTR[1]-bp[1])*0.3;
+      s+=`<text x="${nx}" y="${ny}" font-size="8" fill="var(--ink)" text-anchor="middle" dominant-baseline="middle">${esc(a.reason)}</text>`; });
   }
-  // batting result text near 1B (right-lower)
+  // batting result text near 1B (right side)
   if(c.resultText){
     // sacrifice marks
-    if(c.sacBunt){ s+=`<rect x="60" y="60" width="44" height="22" rx="3" fill="none" stroke="var(--ink-blue)" stroke-width="1.5"/>`; }
-    if(c.sacFly){ s+=`<polygon points="82,58 62,84 102,84" fill="none" stroke="var(--ink-blue)" stroke-width="1.5"/>`; }
+    if(c.sacBunt){ s+=`<rect x="70" y="44" width="34" height="18" rx="3" fill="none" stroke="var(--ink-blue)" stroke-width="1.4"/>`; }
+    if(c.sacFly){ s+=`<polygon points="87,40 71,62 103,62" fill="none" stroke="var(--ink-blue)" stroke-width="1.4"/>`; }
     const qmark = c.quality==="fly"?"⌒":c.quality==="liner"?"−":"";
-    if(qmark){ s+=`<text x="82" y="60" font-size="12" fill="${col}" text-anchor="middle">${qmark}</text>`; }
-    s+=`<text x="82" y="76" font-size="17" font-weight="700" fill="${col}" text-anchor="middle" dominant-baseline="middle">${esc(c.resultText)}</text>`;
+    if(qmark){ s+=`<text x="87" y="42" font-size="11" fill="${col}" text-anchor="middle">${qmark}</text>`; }
+    s+=`<text x="87" y="58" font-size="15" font-weight="700" fill="${col}" text-anchor="middle" dominant-baseline="middle">${esc(c.resultText)}</text>`;
   }
-  // out count (center)
+  // out count (center of diamond)
   if(c.outNumber){
-    s+=`<text x="63" y="46" font-size="20" font-weight="700" fill="var(--muted)" text-anchor="middle" dominant-baseline="middle">${ROMAN[c.outNumber]||""}</text>`;
+    s+=`<text x="60" y="48" font-size="18" font-weight="700" fill="var(--muted)" text-anchor="middle" dominant-baseline="middle">${ROMAN[c.outNumber]||""}</text>`;
   }
-  // rbi (batter order circled) — small marker top-left of diamond
+  // rbi (batter order circled) — small marker near 3B (left side)
   if(c.rbi>0){
-    s+=`<circle cx="46" cy="30" r="8" fill="none" stroke="var(--ink-hit)" stroke-width="1.4"/>`;
-    s+=`<text x="46" y="30" font-size="9" fill="var(--ink-hit)" text-anchor="middle" dominant-baseline="middle">打${c.rbi}</text>`;
+    s+=`<circle cx="33" cy="58" r="8" fill="none" stroke="var(--ink-hit)" stroke-width="1.4"/>`;
+    s+=`<text x="33" y="58" font-size="9" fill="var(--ink-hit)" text-anchor="middle" dominant-baseline="middle">打${c.rbi}</text>`;
   }
   return s+`</svg>`;
 }
@@ -1041,6 +1047,7 @@ function openPitchers(k){
   let h=`<h2>${esc(tm.name)} の投手</h2><div class="sub">先発から順に登録します。「＋ 投手交代」で次の投手を追加（いちばん下＝現在の投手）。「回」は登板したイニング、「対戦打者」は交代直後に迎えた相手の打順です。</div>`;
   h+=`<div class="plist" id="pitList">`;
   if(!list.length) h+=`<div class="hint" style="padding:.2rem 0">「＋ 投手交代」で先発投手を登録してください。</div>`;
+  const wlOpts=(v)=>`<option value="" ${!v?"selected":""}>勝負</option><option value="勝" ${v==="勝"?"selected":""}>勝</option><option value="敗" ${v==="敗"?"selected":""}>敗</option>`;
   list.forEach((p,idx)=>{
     const vsOpts=`<option value="">対戦打者</option>`+[1,2,3,4,5,6,7,8,9].map(o=>`<option value="${o}" ${p.vsOrder===o?"selected":""}>${o}番から</option>`).join("");
     h+=`<div class="prow" data-pidx="${idx}" style="grid-template-columns:${hasR?'3.4rem ':''}1fr 3.2rem 3rem 4.6rem 2rem">
@@ -1050,17 +1057,29 @@ function openPitchers(k){
       <input class="piFrom" placeholder="回" inputmode="numeric" value="${p.from||''}">
       <select class="piVs">${vsOpts}</select>
       <button class="chip" data-pdel="${idx}" style="padding:.3rem 0">✕</button>
+    </div>
+    <div class="prow" data-pidx2="${idx}" style="grid-template-columns:${hasR?'3.4rem ':''}1fr 1fr 1fr;margin-bottom:.4rem">
+      ${hasR?'<span></span>':''}
+      <select class="piWL">${wlOpts(p.decision)}</select>
+      <label style="display:flex;align-items:center;gap:.3rem;font-size:.8rem"><input type="checkbox" class="piSV" ${p.save?"checked":""}>セーブ</label>
+      <input class="piER" placeholder="自責点" inputmode="numeric" value="${p.er!=null?esc(p.er):''}">
     </div>`;
   });
   h+=`</div><div class="modal-actions"><button class="btn" id="piAdd">＋ 投手交代</button><span class="spacer"></span><button class="btn primary" id="piDone">閉じる</button></div>`;
   showModal(h);
   list.forEach((p,idx)=>{
-    const row=document.querySelectorAll("#pitList .prow")[idx]; if(!row) return;
+    const row=document.querySelector(`#pitList .prow[data-pidx="${idx}"]`); if(!row) return;
+    const row2=document.querySelector(`#pitList .prow[data-pidx2="${idx}"]`);
     const rsel=row.querySelector(".piRoster"); if(rsel) rsel.onchange=e=>{ const ri=e.target.value; if(ri!==""){ p.name=ROSTER[+ri].name; p.num=ROSTER[+ri].num; row.querySelector(".piName").value=p.name; row.querySelector(".piNum").value=p.num; scheduleSave(); } };
     row.querySelector(".piName").oninput=e=>{ p.name=e.target.value; scheduleSave(); renderBoard(); };
     row.querySelector(".piNum").oninput=e=>{ p.num=e.target.value; scheduleSave(); renderBoard(); };
     row.querySelector(".piFrom").oninput=e=>{ p.from=parseInt(e.target.value)||""; scheduleSave(); };
     row.querySelector(".piVs").onchange=e=>{ p.vsOrder=parseInt(e.target.value)||""; scheduleSave(); renderBoard(); };
+    if(row2){
+      row2.querySelector(".piWL").onchange=e=>{ p.decision=e.target.value; scheduleSave(); };
+      row2.querySelector(".piSV").onchange=e=>{ p.save=e.target.checked; scheduleSave(); };
+      row2.querySelector(".piER").oninput=e=>{ p.er=e.target.value.trim(); scheduleSave(); };
+    }
   });
   document.querySelectorAll("[data-pdel]").forEach(b=>b.onclick=()=>{ list.splice(+b.dataset.pdel,1); scheduleSave(); openPitchers(k); });
   document.getElementById("piAdd").onclick=()=>{ list.push({name:"",num:"",from:(S.live?S.live.inning:1),vsOrder:(S.live&&list.length>0?S.live.order[opp]:"")}); scheduleSave(); openPitchers(k); };
@@ -1139,6 +1158,27 @@ function openSetup(){
    </div>
    <div class="field"><label>球場</label><input id="sGround" value="${esc(m.ground)}" placeholder="例）〇〇球場"></div>
    <div class="field"><label>正式回数（時間短縮などで7回制の場合は変更）</label><input id="sInnings" type="number" min="1" max="20" inputmode="numeric" value="${S.regInnings||S.innings||9}"></div>
+   <div class="row2">
+     <div class="field"><label>ビジター監督名</label><input id="sMgrAway" value="${esc(m.managerAway)}"></div>
+     <div class="field"><label>ホーム監督名</label><input id="sMgrHome" value="${esc(m.managerHome)}"></div>
+   </div>
+   <div class="step-title">試合情報（早稲田式スコアブックの様式欄）</div>
+   <div class="row2">
+     <div class="field"><label>試合開始</label><input id="sStart" type="time" value="${esc(m.startTime)}"></div>
+     <div class="field"><label>試合終了</label><input id="sEnd" type="time" value="${esc(m.endTime)}"></div>
+   </div>
+   <div class="row2">
+     <div class="field"><label>球場状態</label><input id="sGCond" value="${esc(m.groundCondition)}" placeholder="例）良"></div>
+     <div class="field"><label>天候・風向</label><input id="sWeather" value="${esc(m.weather)}" placeholder="例）晴・南の風"></div>
+   </div>
+   <div class="field"><label>主審</label><input id="sUmpC" value="${esc(m.umpireChief)}"></div>
+   <div class="row3">
+     <div class="field"><label>塁審①</label><input id="sUmp1" value="${esc(m.umpireBase1)}"></div>
+     <div class="field"><label>塁審②</label><input id="sUmp2" value="${esc(m.umpireBase2)}"></div>
+     <div class="field"><label>塁審③</label><input id="sUmp3" value="${esc(m.umpireBase3)}"></div>
+   </div>
+   <div class="field"><label>記事</label><input id="sNotes" value="${esc(m.notes)}" placeholder="特記事項など"></div>
+   <div class="field"><label>参加者</label><input id="sParti" value="${esc(m.participants)}" placeholder="記録員・大会役員など"></div>
    <button class="btn" id="sSwap" type="button" style="width:100%;margin:.2rem 0">⇄ ホーム／ビジターを入れ替え（スコアの上下も入れ替え）</button>
    <button class="btn" id="sRoster" type="button" style="width:100%;margin:.2rem 0">👤 自チームの選手名簿を編集…</button>
    <div class="row2"><button class="btn" id="sPitA" type="button">🥎 ${esc(m.away)}の投手</button><button class="btn" id="sPitH" type="button">🥎 ${esc(m.home)}の投手</button></div>
@@ -1154,6 +1194,11 @@ function openSetup(){
   document.getElementById("sSave").onclick=()=>{
     m.date=val("sDate"); m.tourney=val("sTour"); m.ground=val("sGround");
     m.home=val("sHome")||m.home||"ホーム"; m.away=val("sAway")||m.away||"ビジター";
+    m.managerHome=val("sMgrHome"); m.managerAway=val("sMgrAway");
+    m.startTime=val("sStart"); m.endTime=val("sEnd");
+    m.groundCondition=val("sGCond"); m.weather=val("sWeather");
+    m.umpireChief=val("sUmpC"); m.umpireBase1=val("sUmp1"); m.umpireBase2=val("sUmp2"); m.umpireBase3=val("sUmp3");
+    m.notes=val("sNotes"); m.participants=val("sParti");
     S.teams.home.name=m.home; S.teams.away.name=m.away;
     const newReg=Math.max(1, parseInt(val("sInnings"))||9);
     S.regInnings=newReg;
@@ -1506,14 +1551,215 @@ function swapTeams(){
   scheduleSave();
 }
 
+/* ---------------- Waseda-format stat aggregation (for print/export) ---------------- */
+function posNumberOf(player){ return player && player.pos ? POS_NUM[player.pos] : null; }
+function occupantsForSlot(tm,o){
+  const subs=(tm.subs||[]).filter(p=>p.order===o).sort((a,b)=>(a.atInning||1)-(b.atInning||1));
+  const starter=tm.players[o-1];
+  const list=[{player:starter, from:1}];
+  subs.forEach(sp=>list.push({player:sp, from:sp.atInning||1}));
+  const lastInning=Math.max(S.innings, highestRecordedInning());
+  for(let idx=0; idx<list.length; idx++){
+    list[idx].to = (idx+1<list.length) ? Math.max(list[idx].from, (list[idx+1].from-1)) : lastInning;
+  }
+  return list.slice(0,3); // 用紙は1打順あたり最大3行（先発＋交代2人）まで
+}
+function battingStatsForRange(tm,o,from,to){
+  const st={pa:0,ab:0,r:0,h1:0,h2:0,h3:0,h4:0,h:0,rbi:0,sb:0,bb:0,hbp:0,so:0,sac:0,sf:0};
+  for(let i=from;i<=to;i++){
+    paList(tm,o,i).forEach(c=>{
+      if(c.manual) return;
+      st.pa++;
+      if(c.run) st.r++;
+      if(c.category==="hit"){
+        st.ab++; st.h++;
+        if(c.reachedBase===1) st.h1++; else if(c.reachedBase===2) st.h2++; else if(c.reachedBase===3) st.h3++; else if(c.reachedBase===4) st.h4++;
+        if(c.reachedBase===4) st.rbi++;
+      } else if(c.category==="out"){
+        if(c.resultText==="K") st.so++;
+        if(c.sacBunt) st.sac++; else if(c.sacFly) st.sf++; else st.ab++;
+      } else if(c.category==="walk"){
+        if(c.resultText==="HP") st.hbp++; else st.bb++;
+      } else if(c.category==="err"){
+        st.ab++;
+      }
+      (c.advances||[]).forEach(a=>{ if(a.reason==="S") st.sb++; });
+    });
+  }
+  for(let i=from;i<=to;i++){
+    for(let oo=1; oo<=9; oo++){
+      paList(tm,oo,i).forEach(c=>{
+        (c.advances||[]).forEach(a=>{ if(a.toBase===4 && a.duringOrder===o && (a.reason==="打"||a.reason==="押")) st.rbi++; });
+      });
+    }
+  }
+  return st;
+}
+function fielderCreditsFromReason(reason){
+  if(reason && /^\d(-\d)*$/.test(reason)) return reason.split("-").map(Number);
+  return [];
+}
+function defenseStatsForRange(posNum, oppTeam, from, to){
+  const st={po:0,a:0,e:0};
+  if(!posNum) return st;
+  for(let i=from;i<=to;i++){
+    for(let oo=1; oo<=9; oo++){
+      paList(oppTeam,oo,i).forEach(c=>{
+        if(c.category==="out"){
+          if(c.fielders && c.fielders.length){
+            c.fielders.forEach((f,idx)=>{ if(f===posNum){ if(idx===c.fielders.length-1) st.po++; else st.a++; } });
+          } else if(c.resultText==="K" && posNum===2){
+            st.po++;
+          }
+        }
+        if(c.category==="err" && c.resultText){
+          const m=/^(\d)E$/.exec(c.resultText);
+          if(m && +m[1]===posNum) st.e++;
+        }
+        (c.advances||[]).forEach(a=>{
+          if(a.out){
+            const seq=fielderCreditsFromReason(a.reason);
+            seq.forEach((f,idx)=>{ if(f===posNum){ if(idx===seq.length-1) st.po++; else st.a++; } });
+          }
+        });
+      });
+    }
+  }
+  return st;
+}
+function pitcherStatsFor(p, idx, list, oppTeam){
+  const from=p.from||1;
+  const lastInning=Math.max(S.innings, highestRecordedInning());
+  const to=(idx+1<list.length) ? Math.max(from,(list[idx+1].from||from)-1) : lastInning;
+  const st={outs:0,batters:0,ab:0,pitches:0,h:0,hr:0,sac:0,sf:0,bb:0,hbp:0,so:0,wp:0,bk:0,r:0};
+  for(let i=from;i<=to;i++){
+    for(let oo=1; oo<=9; oo++){
+      paList(oppTeam,oo,i).forEach(c=>{
+        if(c.manual) return;
+        st.batters++;
+        st.pitches += (c.pitches||[]).length;
+        if(c.outNumber) st.outs++;
+        if(c.category==="hit"){ st.h++; st.ab++; if(c.reachedBase===4) st.hr++; }
+        else if(c.category==="out"){
+          if(c.resultText==="K") st.so++;
+          if(c.sacBunt) st.sac++; else if(c.sacFly) st.sf++; else st.ab++;
+        } else if(c.category==="walk"){
+          if(c.resultText==="HP") st.hbp++; else st.bb++;
+        } else if(c.category==="err"){ st.ab++; }
+        if(c.run) st.r++;
+        (c.advances||[]).forEach(a=>{ if(a.out) st.outs++; if(a.reason==="W") st.wp++; if(a.reason==="BK") st.bk++; });
+      });
+    }
+  }
+  return st;
+}
+function ipText(outs){ if(!outs) return ""; const full=Math.floor(outs/3), rem=outs%3; return rem? `${full} ${rem}/3` : `${full}`; }
+function durationText(s,e){
+  if(!s||!e) return "";
+  const sp=s.split(":").map(Number), ep=e.split(":").map(Number);
+  if(sp.length<2||ep.length<2) return "";
+  let mins=(ep[0]*60+ep[1])-(sp[0]*60+sp[1]); if(mins<0) mins+=24*60;
+  return `${Math.floor(mins/60)}時間${mins%60}分`;
+}
+function buildMatchHeaderHTML(){
+  const m=S.meta;
+  const cell=(label,v)=>`<span class="hcell"><b>${esc(label)}</b>${esc(v||"")}</span>`;
+  let h='<div class="wheader">';
+  h+=`<div class="wh-row">${cell("年月日",m.date)}${cell("大会",m.tourney)}${cell("球場",m.ground)}</div>`;
+  h+=`<div class="wh-row">${cell("試合開始",m.startTime)}${cell("試合終了",m.endTime)}${cell("所要時間",durationText(m.startTime,m.endTime))}${cell("球場状態",m.groundCondition)}${cell("天候・風向",m.weather)}</div>`;
+  h+=`<div class="wh-row">${cell("主審",m.umpireChief)}${cell("塁審①",m.umpireBase1)}${cell("塁審②",m.umpireBase2)}${cell("塁審③",m.umpireBase3)}</div>`;
+  if(m.notes) h+=`<div class="wh-row">${cell("記事",m.notes)}</div>`;
+  if(m.participants) h+=`<div class="wh-row">${cell("参加者",m.participants)}</div>`;
+  h+='</div>';
+  return h;
+}
+function teamHeaderRow(tm,teamKey){
+  const mgr = teamKey==="home" ? S.meta.managerHome : S.meta.managerAway;
+  const cols=[]; for(let i=1;i<=S.innings;i++) cols.push(i);
+  let h=`<div class="wteamhead"><span class="wtname">${esc((teamKey==="away"?"先攻　":"後攻　")+tm.name)}</span>${mgr?`<span class="wtmgr">（監督：${esc(mgr)}）</span>`:""}<table class="wlinescore"><tr>`;
+  cols.forEach(i=>h+=`<th>${i}</th>`); h+='<th>合計</th></tr><tr>';
+  let tot=0;
+  cols.forEach(i=>{ const pr=(S.pre.runs[teamKey]&&S.pre.runs[teamKey][i])||0; const r=liveRuns(tm,i)+pr; tot+=r; h+=`<td>${r||""}</td>`; });
+  h+=`<td><b>${tot}</b></td></tr></table></div>`;
+  return h;
+}
+function wasedaTeamTableHTML(tm,teamKey,opp){
+  const cols=[]; for(let i=1;i<=S.innings;i++) cols.push(i);
+  let html='<table class="wsheet"><thead><tr>';
+  html+='<th class="wnar">刺殺</th><th class="wnar">補殺</th><th class="wnar">失策</th><th class="wnar">併殺</th><th class="wnar">打順</th>';
+  html+='<th class="wnar">先発</th><th class="wnar">打ち方</th><th class="wnar">背番号</th><th class="wname">選手名</th>';
+  cols.forEach(i=>html+=`<th>${i}回</th>`);
+  html+='<th class="wnar">打席数</th><th class="wnar">打数</th><th class="wnar">得点</th><th class="wnar">単打</th><th class="wnar">二塁打</th><th class="wnar">三塁打</th><th class="wnar">本塁打</th><th class="wnar">打点</th><th class="wnar">盗塁</th><th class="wnar">犠打</th><th class="wnar">犠飛</th><th class="wnar">四球</th><th class="wnar">死球</th><th class="wnar">三振</th>';
+  html+='</tr></thead><tbody>';
+  for(let o=1;o<=9;o++){
+    const occ=occupantsForSlot(tm,o);
+    occ.forEach((oc,idx)=>{
+      const pl=oc.player||{};
+      const posNum=posNumberOf(pl);
+      const def=defenseStatsForRange(posNum,opp,oc.from,oc.to);
+      const bat=battingStatsForRange(tm,o,oc.from,oc.to);
+      const label=idx===0?o:(o+idx*10);
+      const nm=pl.name?esc(pl.name):"";
+      html+='<tr>';
+      html+=`<td>${def.po||""}</td><td>${def.a||""}</td><td>${def.e||""}</td><td></td><td>${label}</td>`;
+      html+=`<td>${pl.pos?POS_NUM[pl.pos]:""}</td><td>${pl.bats||""}</td><td>${pl.num?esc(pl.num):""}</td><td class="wname">${nm}</td>`;
+      cols.forEach(i=>{
+        const within=i>=oc.from && i<=oc.to;
+        const pas=within?paList(tm,o,i):[];
+        html+=`<td class="pa">${cellStackSVG(pas, within?o:0, within?i:0)}</td>`;
+      });
+      html+=`<td>${bat.pa||""}</td><td>${bat.ab||""}</td><td>${bat.r||""}</td><td>${bat.h1||""}</td><td>${bat.h2||""}</td><td>${bat.h3||""}</td><td>${bat.h4||""}</td><td>${bat.rbi||""}</td><td>${bat.sb||""}</td><td>${bat.sac||""}</td><td>${bat.sf||""}</td><td>${bat.bb||""}</td><td>${bat.hbp||""}</td><td>${bat.so||""}</td>`;
+      html+='</tr>';
+    });
+  }
+  html+='</tbody></table>';
+  return html;
+}
+function wasedaPitcherTableHTML(pitchTeam,battingTeam){
+  const list=(pitchTeam.pitchers||[]).filter(p=>p.name);
+  let html='<table class="wsheet wpitch"><thead><tr><th class="wname">氏名</th><th class="wnar">勝負</th><th class="wnar">セーブ</th><th class="wnar">投球回数</th><th class="wnar">打者</th><th class="wnar">打数</th><th class="wnar">投球数</th><th class="wnar">安打</th><th class="wnar">本塁打</th><th class="wnar">犠打</th><th class="wnar">犠飛</th><th class="wnar">四球</th><th class="wnar">死球</th><th class="wnar">三振</th><th class="wnar">暴投</th><th class="wnar">ボーク</th><th class="wnar">失点</th><th class="wnar">自責点</th></tr></thead><tbody>';
+  if(!list.length){
+    html+=`<tr><td class="wname">（投手未登録）</td>${'<td></td>'.repeat(17)}</tr>`;
+  } else {
+    list.forEach((p,idx)=>{
+      const st=pitcherStatsFor(p,idx,list,battingTeam);
+      html+=`<tr><td class="wname">${esc(p.name)}${p.num?(" #"+esc(p.num)):""}</td>`;
+      html+=`<td>${p.decision?esc(p.decision):""}</td><td>${p.save?"○":""}</td><td>${ipText(st.outs)}</td>`;
+      html+=`<td>${st.batters||""}</td><td>${st.ab||""}</td><td>${st.pitches||""}</td><td>${st.h||""}</td><td>${st.hr||""}</td><td>${st.sac||""}</td><td>${st.sf||""}</td><td>${st.bb||""}</td><td>${st.hbp||""}</td><td>${st.so||""}</td><td>${st.wp||""}</td><td>${st.bk||""}</td><td>${st.r||""}</td><td>${(p.er!=null&&p.er!=="")?esc(p.er):""}</td>`;
+      html+='</tr>';
+    });
+  }
+  html+='</tbody></table>';
+  return html;
+}
+function printNotesHTML(){
+  return `<div class="pnote">※ 投手成績（打者・打数・投球数・被安打・与四死球・奪三振・暴投・ボーク・失点）は、登板が始まった回の頭で区切って自動集計した概算です（同一回内での途中交代は区別していません）。自責点・勝敗・セーブ・併殺（DP）は自動判定できないため、空欄または手入力欄としています。</div>`;
+}
+
 /* ---------------- export (printable HTML the viewer can save & print to PDF) ---------------- */
 const PRINT_CSS=`
-@page{size:A4;margin:10mm;}
+@page{size:A4 landscape;margin:8mm;}
 :root{--ink:#1c1c1c;--ink-hit:#c0392b;--ink-blue:#1f5fbf;--paper:#fff;--surface:#fff;--line:#d9d4c6;--line-strong:#b7b0a0;--field:#2f7d4f;--field-soft:#eef3ee;--text:#1c1c1c;--muted:#6b6b6b;}
 *{box-sizing:border-box;}
 body{margin:10px;color:var(--text);background:#fff;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",Meiryo,sans-serif;}
 h2{margin:0 0 4px;} h3{margin:8px 0 3px;}
 .printbar{margin-bottom:10px;} .printbar button{padding:9px 16px;font-size:15px;font-weight:700;border:1px solid var(--field);background:var(--field);color:#fff;border-radius:8px;}
+.wheader{font-size:10px;margin-bottom:6px;border:1px solid var(--line-strong);border-radius:6px;padding:4px 8px;}
+.wh-row{display:flex;flex-wrap:wrap;gap:12px;margin:2px 0;}
+.hcell{white-space:nowrap;} .hcell b{margin-right:3px;color:var(--field);}
+.wteamhead{display:flex;align-items:center;gap:8px;margin:6px 0 3px;}
+.wtname{font-weight:800;font-size:13px;} .wtmgr{font-size:10px;color:var(--muted);}
+.wlinescore{border-collapse:collapse;margin-left:auto;font-size:9px;}
+.wlinescore th,.wlinescore td{border:1px solid var(--line);padding:1px 4px;text-align:center;}
+table.wsheet{border-collapse:collapse;width:100%;font-size:8px;margin-bottom:4px;table-layout:fixed;}
+table.wsheet th,table.wsheet td{border:1px solid var(--line);padding:1px 2px;text-align:center;overflow:hidden;}
+table.wsheet thead th{background:var(--field-soft);font-size:8px;}
+.wnar{width:22px;}
+.wname{min-width:70px;width:70px;text-align:left!important;font-size:9px;white-space:nowrap;}
+table.wsheet td.pa{width:38px;height:30px;padding:0;} table.wsheet td.pa svg{display:block;width:100%;height:100%;}
+.wh-sub{font-size:10px;font-weight:700;margin:4px 0 2px;color:var(--field);}
+table.wpitch{table-layout:auto;}
+.pnote{font-size:8px;color:var(--muted);line-height:1.4;margin:2px 0 6px;}
 table.sheet{border-collapse:collapse;} table.sheet th,table.sheet td{border:1px solid var(--line);padding:0;}
 table.sheet thead th{background:var(--field-soft);font-size:10px;color:var(--muted);height:16px;padding:0 4px;}
 .col-order{min-width:100px;max-width:100px;text-align:left;padding:2px 4px;font-size:11px;}
@@ -1539,15 +1785,17 @@ function pdfFileBase(){
 }
 function buildPrintContent(){
   const prev=S.active;
-  const m=S.meta; const title=[m.date,m.tourney,(m.away+" vs "+m.home),m.ground].filter(Boolean).join("　");
-  const header=`<h2>スコアブック</h2><div style="color:#666;font-size:13px;margin-bottom:8px">${esc(title)}</div>`;
-  const board=scoreboardHTML();
-  let pages="";
-  ["away","home"].forEach((k,i)=>{
+  const header=`<h2>スコアブック（早稲田式）</h2>`+buildMatchHeaderHTML();
+  let pages=header;
+  [["away","home"],["home","away"]].forEach(([k,ok],idx)=>{
     S.active=k;
-    const teamBlock=`<h3>${esc(S.teams[k].name)}</h3>`+pitchersLine(S.teams[k],k)+sheetTableHTML(S.teams[k]);
-    const isFirst=i===0, isLast=i===1;
-    pages+=`<div class="team-page">${isFirst?header+board:""}${teamBlock}${isLast?legendHTML():""}</div>`;
+    const tm=S.teams[k], opp=S.teams[ok];
+    let block=teamHeaderRow(tm,k);
+    block+=wasedaTeamTableHTML(tm,k,opp);
+    block+=`<div class="wh-sub">投手成績（対 ${esc(tm.name)}）</div>`;
+    block+=wasedaPitcherTableHTML(opp,tm);
+    if(idx===1){ block+=printNotesHTML(); block+=legendHTML(); }
+    pages+=`<div class="team-page">${block}</div>`;
   });
   S.active=prev;
   return pages;
@@ -1559,15 +1807,6 @@ function buildPrintHTML(){
 }
 function legendHTML(){
   return `<div class="legend"><b>凡例</b>　守備位置：投1 捕2 一3 二4 三5 遊6 左7 中8 右9 ／ DH=D。安打=赤線・得点=ダイヤ塗り。K=三振、B=四球、HP=死球、IB=故意四球、E=失策、DP=併殺、×=走者アウト、犠打=□囲み・犠飛=△囲み。S=盗塁、W=暴投、P=捕逸、BK=ボーク。アウトは野手を連携順に（例 6-3）、自分で塁を踏めば番号+塁記号（A一・B二・C三・D本、例 3A/6B）。ボールカウント：●ボール／×見逃し／⊗空振り／△ファウル、✓＝その投球時に走者が動いた。色：赤＝安打・得点、青＝四死球・犠打犠飛。</div>`;
-}
-function pitchersLine(tm,k){
-  const ps=(tm.pitchers||[]).filter(p=>p.name); if(!ps.length) return "";
-  const opp=k==="away"?"home":"away"; const oppTeam=S.teams[opp];
-  return `<div style="font-size:12px;color:#333;margin:2px 0 5px">投手：${ps.map(p=>{
-    const vs=p.vsOrder&&oppTeam?currentPlayer(oppTeam,p.vsOrder):null;
-    const vsLabel=(vs&&vs.name)?`・対${p.vsOrder}番 ${esc(vs.name)}から`:"";
-    return esc(p.name)+(p.num?(" #"+esc(p.num)):"")+(p.from?`（${p.from}回〜${vsLabel}）`:vsLabel?`（${vsLabel.replace(/^・/,"")}）`:"");
-  }).join("、 ")}</div>`;
 }
 async function exportSheet(){
   const html=buildPrintHTML();
