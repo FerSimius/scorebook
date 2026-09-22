@@ -179,6 +179,10 @@
   .prow .o{font-weight:700;color:var(--field);text-align:center;}
   .prow input,.prow select{padding:.35rem;font-size:.82rem;border:1px solid var(--line-strong);border-radius:6px;background:var(--paper);color:var(--text);}
 
+  /* header menu */
+  .menu-list{display:flex;flex-direction:column;gap:.5rem;margin:.4rem 0;}
+  .menu-list .btn{width:100%;text-align:center;}
+
   /* history list */
   .hist-list{display:flex;flex-direction:column;max-height:60vh;overflow:auto;}
   .hist-row{display:flex;align-items:center;gap:.5rem;padding:.55rem 0;border-bottom:1px solid var(--line);}
@@ -251,12 +255,7 @@
   <span class="spacer"></span>
   <span class="save-state" id="saveState"></span>
   <button id="btnView">表を見る</button>
-  <button id="btnSetup">試合設定</button>
-  <button id="btnInning">延長する</button>
-  <button id="btnPrint">PDF書き出し</button>
-  <button id="btnHistory">履歴</button>
-  <button id="btnBackup">バックアップ</button>
-  <button id="btnNew">保存して新規</button>
+  <button id="btnMenu">メニュー</button>
 </header>
 
 <div class="print-title" id="printTitle"></div>
@@ -1556,17 +1555,34 @@ function openBackup(){
   document.getElementById("bkClose").onclick=closeModal;
 }
 
-/* ---------------- boot ---------------- */
-document.getElementById("btnView").onclick=()=>{ S.view = S.view==="live"?"grid":"live"; scheduleSave(); renderAll(); };
-document.getElementById("btnSetup").onclick=openSetup;
-document.getElementById("btnInning").onclick=()=>{
+/* ---------------- header menu ---------------- */
+function extendInning(){
   if(S.live && S.live.over){ S.live.over=false; changeHalf(); return; }
   S.innings++; scheduleSave(); renderAll();
-};
-document.getElementById("btnPrint").onclick=exportSheet;
-document.getElementById("btnHistory").onclick=openHistory;
-document.getElementById("btnBackup").onclick=openBackup;
-document.getElementById("btnNew").onclick=confirmNew;
+}
+function openMenu(){
+  showModal(`<h2>メニュー</h2>
+    <div class="menu-list">
+      <button class="btn" id="moSetup">試合設定</button>
+      <button class="btn" id="moInning">延長する</button>
+      <button class="btn" id="moPrint">PDF書き出し</button>
+      <button class="btn" id="moHistory">履歴（過去の試合）</button>
+      <button class="btn" id="moBackup">バックアップ</button>
+      <button class="btn danger" id="moNew">保存して新規</button>
+    </div>
+    <div class="modal-actions"><span class="spacer"></span><button class="btn ghost" id="moClose">閉じる</button></div>`);
+  document.getElementById("moSetup").onclick=()=>{ closeModal(); openSetup(); };
+  document.getElementById("moInning").onclick=()=>{ closeModal(); extendInning(); };
+  document.getElementById("moPrint").onclick=()=>{ closeModal(); exportSheet(); };
+  document.getElementById("moHistory").onclick=()=>{ closeModal(); openHistory(); };
+  document.getElementById("moBackup").onclick=()=>{ closeModal(); openBackup(); };
+  document.getElementById("moNew").onclick=()=>{ closeModal(); confirmNew(); };
+  document.getElementById("moClose").onclick=closeModal;
+}
+
+/* ---------------- boot ---------------- */
+document.getElementById("btnView").onclick=()=>{ S.view = S.view==="live"?"grid":"live"; scheduleSave(); renderAll(); };
+document.getElementById("btnMenu").onclick=openMenu;
 if(navigator.storage && navigator.storage.persist){ navigator.storage.persist().catch(()=>{}); }
 const _fresh=!load();
 if(_fresh) S=newGame();
