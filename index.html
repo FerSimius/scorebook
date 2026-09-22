@@ -155,8 +155,22 @@
   .chip:hover{border-color:var(--field);}
   .chip[aria-pressed="true"]{background:var(--field);color:#fff;border-color:var(--field);}
   .chip.num{min-width:2.6rem;text-align:center;padding:.5rem 0;}
+  .chip.small{padding:.35rem .6rem;font-size:.8rem;font-weight:600;}
+  .chip.ghost{background:transparent;}
   .grid9{display:grid;grid-template-columns:repeat(3,1fr);gap:.4rem;max-width:15rem;}
   .step-title{font-size:.82rem;color:var(--muted);margin:.7rem 0 .25rem;font-weight:700;}
+
+  .advcard{border:1px solid var(--line-strong);border-radius:10px;background:var(--paper);padding:.55rem .65rem;margin:.2rem 0 .6rem;}
+  .advrow{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin:.15rem 0;}
+  .advrow.muted{color:var(--muted);font-size:.85rem;}
+  .advstep{display:inline-flex;align-items:center;justify-content:center;width:1.3rem;height:1.3rem;border-radius:50%;
+    background:var(--field);color:#fff;font-size:.72rem;font-weight:700;flex:none;}
+  .advtxt{font-size:.92rem;}
+  .advduring{display:flex;align-items:center;gap:.35rem;flex-wrap:wrap;margin:.15rem 0 .55rem 1.8rem;}
+  .advduring.muted{color:var(--muted);font-size:.78rem;margin-left:1.8rem;}
+  .advduring .lbl{font-size:.76rem;color:var(--muted);}
+  .advnext{margin-top:.3rem;}
+  .advnexttitle{font-weight:700;font-size:.92rem;color:var(--field);margin-bottom:.3rem;}
 
   .pitch-bar{display:flex;flex-wrap:wrap;gap:.35rem;align-items:center;margin:.2rem 0 .4rem;}
   .pitch-bar .seq{flex:1;min-width:6rem;font-size:1rem;letter-spacing:.15em;color:var(--ink);min-height:1.5rem;
@@ -293,6 +307,8 @@ const PITCH = { // ball-count marks
   ball:{g:"●",label:"ボール"},
   foul:{g:"△",label:"ファウル"},
 };
+const ADV_REASON = {S:"盗塁", W:"暴投", P:"捕逸", BK:"ボーク", "打":"打者進塁", "進":"その他"};
+const BASE_LABELS = {1:"一塁", 2:"二塁", 3:"三塁", 4:"本塁"};
 const APP_VERSION = "1.3.2";
 const STORAGE_KEY = "scorebook.v1";
 const ROSTER_KEY = "scorebook.roster.v1";
@@ -705,41 +721,45 @@ function renderWizard(){
     const onBase = (W.reachedBase>=1 && (W.category==="hit"||W.category==="walk"||W.category==="err"));
     if(onBase){
       const cur = W.advances.length? W.advances[W.advances.length-1].toBase : W.reachedBase;
-      h+=`<div class="step-title">この打者（${W.o}番${batName}）が出塁後どこまで進んだか</div><div class="chips">`;
-      if(W.advances.length){
-        W.advances.forEach(a=>{ const bl={2:"二塁",3:"三塁",4:"本塁"}[a.toBase]; const dt=a.duringOrder?` / ${a.duringOrder}番の打席中`:""; h+=`<span class="chip" style="border-style:dashed">${bl} ${esc(a.reason)}${dt}</span>`; });
-        h+=`<button class="chip" data-advundo="1">←戻す</button>`;
-      }else{
-        h+=`<span class="chip" style="border-style:dashed;color:var(--muted)">現在 ${{1:"一塁",2:"二塁",3:"三塁"}[cur]||""}</span>`;
+      h+=`<div class="step-title">この打者（${W.o}番${batName}）が出塁後の動き</div><div class="advcard">`;
+      let from=W.reachedBase;
+      if(!W.advances.length){
+        h+=`<div class="advrow muted">まだ動いていません（現在 ${BASE_LABELS[cur]}）</div>`;
       }
-      h+=`</div>`;
-      if(cur<4){
-        const nb={1:"二塁",2:"三塁",3:"本塁"}[cur];
-        h+=`<div class="chips" id="wAdvAdd"><span style="align-self:center;font-size:.78rem;color:var(--muted)">${nb}へ：</span>`;
-        [["S","盗塁"],["W","暴投"],["P","捕逸"],["BK","ボーク"],["打","打者進塁"],["進","その他"]].forEach(([r,l])=>
-          h+=`<button class="chip" data-adv="${r}">${l}</button>`);
+      W.advances.forEach((a,idx)=>{
+        const isLast = idx===W.advances.length-1;
+        const reasonL = ADV_REASON[a.reason]||a.reason;
+        h+=`<div class="advrow"><span class="advstep">${idx+1}</span><span class="advtxt">${BASE_LABELS[from]} → <b>${BASE_LABELS[a.toBase]}</b>（${reasonL}）</span>`;
+        if(isLast) h+=`<button class="chip small ghost" data-advundo="1">取消</button>`;
         h+=`</div>`;
+        if(isLast){
+          const t2=team(); const orders=[]; for(let oo=1;oo<=9;oo++){ if(t2.cells[cellKey(oo,W.i)]) orders.push(oo); }
+          h+=`<div class="advduring"><span class="lbl">↳ いつ起きた？</span>`;
+          orders.forEach(oo=> h+=`<button class="chip num small" data-during="${oo}" aria-pressed="${a.duringOrder===oo}">${oo}番</button>`);
+          h+=`<button class="chip small" data-during="0" aria-pressed="${!a.duringOrder}">指定なし</button></div>`;
+        }else{
+          h+=`<div class="advduring muted">↳ ${a.duringOrder?a.duringOrder+"番の打席中":"打席の指定なし"}</div>`;
+        }
+        from=a.toBase;
+      });
+      if(cur<4){
+        h+=`<div class="advnext"><div class="advnexttitle">→ ${BASE_LABELS[cur+1]}へ進めるなら：</div><div class="chips">`;
+        Object.entries(ADV_REASON).forEach(([r,l])=> h+=`<button class="chip" data-adv="${r}">${l}</button>`);
+        h+=`</div></div>`;
       }else{
         h+=`<div class="hint" style="padding:.1rem 0">本塁まで到達（得点）。</div>`;
       }
-      if(W.advances.length){
-        const t2=team(); const last=W.advances[W.advances.length-1];
-        const orders=[]; for(let oo=1;oo<=9;oo++){ if(t2.cells[cellKey(oo,W.i)]) orders.push(oo); }
-        h+=`<div class="chips" id="wDuring"><span style="align-self:center;font-size:.78rem;color:var(--muted)">上の進塁が起きたときの打者（その打者にチェックが付きます）：</span>`;
-        orders.forEach(oo=> h+=`<button class="chip num" data-during="${oo}" aria-pressed="${last.duringOrder===oo}">${oo}番</button>`);
-        h+=`<button class="chip" data-during="0" aria-pressed="${!last.duringOrder}">なし</button></div>`;
-      }
+      h+=`</div>`;
     }
     const runners = onBaseRunners(W.i, W.o);
     if(runners.length){
       h+=`<div class="step-title">塁上の他の走者を動かす</div>`;
       runners.forEach(r=>{
-        const baseL={1:"一塁",2:"二塁",3:"三塁"}[r.base];
-        const nextL={1:"二塁",2:"三塁",3:"本塁"}[r.base];
-        h+=`<div class="chips"><span class="chip" style="border-style:dashed">${r.order}番 ${esc(r.name)}（${baseL}）→ ${nextL}</span>`;
-        [["S","盗塁"],["W","暴投"],["P","捕逸"],["BK","ボーク"],["打","打者進塁"],["進","その他"]].forEach(([rs,l])=>
-          h+=`<button class="chip" data-move="${r.order}" data-movereason="${rs}">${l}</button>`);
-        h+=`</div>`;
+        const baseL=BASE_LABELS[r.base];
+        const nextL=BASE_LABELS[r.base+1];
+        h+=`<div class="advcard"><div class="advrow"><span class="advtxt">${r.order}番 ${esc(r.name)}：${baseL} → <b>${nextL}</b></span></div><div class="chips">`;
+        Object.entries(ADV_REASON).forEach(([rs,l])=> h+=`<button class="chip" data-move="${r.order}" data-movereason="${rs}">${l}</button>`);
+        h+=`</div></div>`;
       });
       h+=`<div class="hint" style="padding:.1rem 0">選ぶと走者は1つ先の塁へ進み、今の打者のカウント欄に✓が付きます。</div>`;
     }
@@ -1668,21 +1688,21 @@ function openMenu(){
   showModal(`<h2>メニュー <span class="ver">v${APP_VERSION}</span></h2>
     <div class="menu-list">
       <button class="btn" id="moSetup">試合設定</button>
+      <button class="btn" id="moPrint">PDF書き出し</button>
+      <button class="btn danger" id="moNew">保存して新規</button>
       <button class="btn" id="moInning">延長する</button>
       <button class="btn danger" id="moEndNow">試合終了にする（時間切れ・コールド）</button>
-      <button class="btn" id="moPrint">PDF書き出し</button>
       <button class="btn" id="moHistory">履歴（過去の試合）</button>
       <button class="btn" id="moBackup">バックアップ</button>
-      <button class="btn danger" id="moNew">保存して新規</button>
     </div>
     <div class="modal-actions"><span class="spacer"></span><button class="btn ghost" id="moClose">閉じる</button></div>`);
   document.getElementById("moSetup").onclick=()=>{ closeModal(); openSetup(); };
+  document.getElementById("moPrint").onclick=()=>{ closeModal(); exportSheet(); };
+  document.getElementById("moNew").onclick=()=>{ closeModal(); confirmNew(); };
   document.getElementById("moInning").onclick=()=>{ closeModal(); extendInning(); };
   document.getElementById("moEndNow").onclick=()=>{ closeModal(); forceEndGame(); };
-  document.getElementById("moPrint").onclick=()=>{ closeModal(); exportSheet(); };
   document.getElementById("moHistory").onclick=()=>{ closeModal(); openHistory(); };
   document.getElementById("moBackup").onclick=()=>{ closeModal(); openBackup(); };
-  document.getElementById("moNew").onclick=()=>{ closeModal(); confirmNew(); };
   document.getElementById("moClose").onclick=closeModal;
 }
 
