@@ -1487,7 +1487,7 @@ function pdfFileBase(){
   const m=S.meta;
   const ymd=(m.date||today()).replace(/-/g,"");
   const away=m.away||"ビジター", home=m.home||"ホーム";
-  return `${ymd}_${away}・${totalRuns("away")}vs${totalRuns("home")}・${home}`;
+  return `${ymd}_${away}[${totalRuns("away")}]vs[${totalRuns("home")}]${home}`;
 }
 function buildPrintHTML(){
   const prev=S.active;
