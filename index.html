@@ -293,7 +293,7 @@ const PITCH = { // ball-count marks
   ball:{g:"●",label:"ボール"},
   foul:{g:"△",label:"ファウル"},
 };
-const APP_VERSION = "1.1.0";
+const APP_VERSION = "1.1.1";
 const STORAGE_KEY = "scorebook.v1";
 const ROSTER_KEY = "scorebook.roster.v1";
 const HISTORY_KEY = "scorebook.history.v1";
@@ -1433,24 +1433,25 @@ function swapTeams(){
 
 /* ---------------- export (printable HTML the viewer can save & print to PDF) ---------------- */
 const PRINT_CSS=`
+@page{size:A4;margin:10mm;}
 :root{--ink:#1c1c1c;--ink-hit:#c0392b;--ink-blue:#1f5fbf;--paper:#fff;--surface:#fff;--line:#d9d4c6;--line-strong:#b7b0a0;--field:#2f7d4f;--field-soft:#eef3ee;--text:#1c1c1c;--muted:#6b6b6b;}
 *{box-sizing:border-box;}
-body{margin:16px;color:var(--text);background:#fff;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",Meiryo,sans-serif;}
-h2{margin:0 0 4px;} h3{margin:14px 0 4px;}
+body{margin:10px;color:var(--text);background:#fff;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",Meiryo,sans-serif;}
+h2{margin:0 0 4px;} h3{margin:8px 0 3px;}
 .printbar{margin-bottom:10px;} .printbar button{padding:9px 16px;font-size:15px;font-weight:700;border:1px solid var(--field);background:var(--field);color:#fff;border-radius:8px;}
 table.sheet{border-collapse:collapse;} table.sheet th,table.sheet td{border:1px solid var(--line);padding:0;}
-table.sheet thead th{background:var(--field-soft);font-size:11px;color:var(--muted);height:22px;padding:0 4px;}
-.col-order{min-width:110px;max-width:110px;text-align:left;padding:2px 4px;font-size:12px;}
-td.pa{width:108px;height:80px;vertical-align:top;} td.pa svg{display:block;width:100%;height:100%;}
-.cellbtn{display:block;width:100%;height:80px;background:none;border:none;padding:0;}
-.lineup-cell{display:flex;gap:5px;align-items:center;background:none;border:none;width:100%;text-align:left;padding:2px;}
+table.sheet thead th{background:var(--field-soft);font-size:10px;color:var(--muted);height:16px;padding:0 4px;}
+.col-order{min-width:100px;max-width:100px;text-align:left;padding:2px 4px;font-size:11px;}
+td.pa{width:96px;height:58px;vertical-align:top;} td.pa svg{display:block;width:100%;height:100%;}
+.cellbtn{display:block;width:100%;height:58px;background:none;border:none;padding:0;}
+.lineup-cell{display:flex;gap:5px;align-items:center;background:none;border:none;width:100%;text-align:left;padding:1px 2px;}
 .lineup-cell .ord{font-weight:700;color:var(--field);} .lineup-cell .who{min-width:0;}
-.lineup-cell .nm{font-size:12px;font-weight:600;} .lineup-cell .nm.sub{color:var(--muted);font-weight:500;font-size:11px;}
-.lineup-cell .pos{font-size:10px;color:var(--muted);} .lineup-cell .empty{font-size:11px;color:var(--muted);}
-tfoot td{font-weight:700;text-align:center;background:var(--field-soft);font-size:12px;height:20px;} tfoot td.lbl{text-align:right;padding-right:6px;color:var(--muted);}
-.scoreboard{margin-bottom:8px;} .scoreboard table{border-collapse:collapse;font-size:12px;}
-.scoreboard th,.scoreboard td{border:1px solid var(--line);padding:2px 6px;text-align:center;} .scoreboard td.team{text-align:left;font-weight:700;} .scoreboard .rhe{font-weight:800;background:var(--field-soft);}
-.legend{font-size:11px;line-height:1.6;padding:8px 10px;border:1px solid var(--line-strong);border-radius:8px;margin-top:12px;} .legend b{color:var(--field);}
+.lineup-cell .nm{font-size:11px;font-weight:600;} .lineup-cell .nm.sub{color:var(--muted);font-weight:500;font-size:10px;}
+.lineup-cell .pos{font-size:9px;color:var(--muted);} .lineup-cell .empty{font-size:10px;color:var(--muted);}
+tfoot td{font-weight:700;text-align:center;background:var(--field-soft);font-size:11px;height:16px;} tfoot td.lbl{text-align:right;padding-right:6px;color:var(--muted);}
+.scoreboard{margin-bottom:6px;} .scoreboard table{border-collapse:collapse;font-size:11px;}
+.scoreboard th,.scoreboard td{border:1px solid var(--line);padding:1px 5px;text-align:center;} .scoreboard td.team{text-align:left;font-weight:700;} .scoreboard .rhe{font-weight:800;background:var(--field-soft);}
+.legend{font-size:10px;line-height:1.45;padding:6px 8px;border:1px solid var(--line-strong);border-radius:8px;margin-top:8px;} .legend b{color:var(--field);}
 .team-page{page-break-after:always;break-after:page;}
 .team-page:last-child{page-break-after:auto;break-after:auto;}
 @media print{.printbar{display:none;}}
